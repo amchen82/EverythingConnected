@@ -5,7 +5,8 @@ __pycache__/
 static/
 myenv/
 .env
-
+backend/backenv
+frontend/nod_modules
 # C extensions
 *.so
 
