@@ -5,6 +5,8 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI()
 
+from backend.routers import auth
+app.include_router(auth.router)  # ← add this!
 
 
 

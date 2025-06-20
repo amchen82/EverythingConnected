@@ -21,14 +21,16 @@ const Canvas = forwardRef((props, ref) => {
   const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 
   // Expose workflow JSON
-  useImperativeHandle(ref, () => ({
-    getWorkflowJson: () =>
-      nodes.map((n) => ({
-        type: n.data.type,
-        service: n.data.label,
-        action: n.data.action,
-      })),
-  }));
+useImperativeHandle(ref, () => ({
+  getWorkflowJson: (name: string) => ({
+    name : name,
+    workflow: nodes.map((n) => ({
+      type: n.data.type,
+      service: n.data.label,
+      action: n.data.action,
+    })),
+  })
+}));
 
   const onDrop = (event: React.DragEvent) => {
     event.preventDefault();

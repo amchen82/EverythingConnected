@@ -1,6 +1,5 @@
-# backend/models/workflow.py
 from pydantic import BaseModel
-from typing import List, Dict
+from typing import List
 
 class Step(BaseModel):
     type: str  # trigger or action
@@ -8,4 +7,6 @@ class Step(BaseModel):
     action: str
 
 class Workflow(BaseModel):
+    name: str                   # 🔹 add this line
     workflow: List[Step]
+    owner: str
