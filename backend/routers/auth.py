@@ -1,5 +1,5 @@
 from fastapi import APIRouter, HTTPException
-from backend.models.user import User
+from models.user import User
 
 router = APIRouter()
 fake_users_db = {}  # Replace with real DB later

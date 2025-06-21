@@ -3,6 +3,7 @@ import React, {
   forwardRef,
   useRef,
   useState,
+  useCallback
 } from 'react';
 import ReactFlow, {
   useNodesState,
@@ -16,20 +17,42 @@ import ReactFlow, {
 import { v4 as uuidv4 } from 'uuid';
 
 const Canvas = forwardRef((props, ref) => {
-  const [nodes, setNodes, onNodesChange] = useNodesState([]);
-  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+const [nodes, setNodes, onNodesChange] = useNodesState([]);
+const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+const onConnect = useCallback((params:Connection) => setEdges((eds) => addEdge(params, eds)), []);
 
-  // Expose workflow JSON
+
+
 useImperativeHandle(ref, () => ({
   getWorkflowJson: (name: string) => ({
-    name : name,
+    name,
     workflow: nodes.map((n) => ({
+      id: n.id, // <-- Save node id!
       type: n.data.type,
       service: n.data.label,
       action: n.data.action,
     })),
-  })
+    edges,
+  }),
+  loadWorkflow: (workflowData: any) => {
+      const verticalSpacing = 120; // pixels between nodes
+  const startX = 300;
+  const startY = 100;
+    const newNodes = workflowData.workflow.map((step:any, index:number) => ({
+      id: step.id ,
+      type: 'default',
+      position: { x: startX, y: startY + index * verticalSpacing },
+
+      data: {
+        label: step.service,
+        type: step.type,
+        action: step.action,
+      },
+    }));
+    setNodes(newNodes);
+    setEdges(workflowData.edges || []); // optionally clear edges
+  },
 }));
 
   const onDrop = (event: React.DragEvent) => {
@@ -54,7 +77,7 @@ useImperativeHandle(ref, () => ({
     setNodes((nds) => nds.concat(newNode));
   };
 
-  const onConnect = (params: Connection) => setEdges((eds) => addEdge(params, eds));
+  // const onConnect = (params: Connection) => setEdges((eds) => addEdge(params, eds));
 
   const onNodeClick = (_: any, node: Node) => {
     setSelectedNode(node);

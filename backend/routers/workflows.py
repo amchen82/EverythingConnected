@@ -1,13 +1,17 @@
 # backend/routers/workflows.py
 from fastapi import APIRouter, HTTPException
-from backend.models.workflow import Workflow
-from backend.services.gmail import check_new_email
-from backend.services.notion import create_notion_page
+from models.workflow import Workflow
+from services.gmail import check_new_email
+from services.notion import create_notion_page
 
 router = APIRouter()
 
 # In-memory workflow storage for example
 db = []
+
+@router.get("/user/{username}")
+def get_user_workflows(username: str):
+    return [wf for wf in db if wf["owner"] == username]
 
 @router.post("/save")
 def save_workflow(workflow: Workflow):
