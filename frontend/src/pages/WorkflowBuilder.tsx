@@ -6,12 +6,15 @@ const WorkflowBuilder = ({ username }: { username: string }) => {
   const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
 
   // Fetch saved workflows for this user
-  useEffect(() => {
-    fetch(`http://localhost:8000/workflows/user/${username}`)
-      .then(res => res.json())
-      .then(data => setSavedWorkflows(data))
-      .catch(err => console.error("Failed to load workflows", err));
-  }, [username]);
+useEffect(() => {
+  fetch(`http://localhost:8000/workflows/user/${username}`)
+    .then(res => res.json())
+    .then(data => setSavedWorkflows(Array.isArray(data) ? data : [])) // <-- Ensure array
+    .catch(err => {
+      console.error("Failed to load workflows", err);
+      setSavedWorkflows([]); // fallback to empty array on error
+    });
+}, [username]);
 
   const saveWorkflow = async () => {
     const name = prompt("Enter a name for your workflow:");
