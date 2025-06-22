@@ -4,12 +4,17 @@ import Canvas from '../components/Canvas';
 const WorkflowBuilder = ({ username }: { username: string }) => {
   const canvasRef = useRef<any>(null);
   const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
+   const [schedule, setSchedule] = useState<number>(5); // default 5 minutes
+   const [currentWorkflow, setCurrentWorkflow] = useState<any | null>(null);
 
   // Fetch saved workflows for this user
 useEffect(() => {
   fetch(`http://localhost:8000/workflows/user/${username}`)
     .then(res => res.json())
-    .then(data => setSavedWorkflows(Array.isArray(data) ? data : [])) // <-- Ensure array
+    .then(data => {
+      console.log("[FRONTEND] Received workflows from backend:", data); // <-- LO
+      setSavedWorkflows(Array.isArray(data) ? data : []); // <-- Ensure array
+    })
     .catch(err => {
       console.error("Failed to load workflows", err);
       setSavedWorkflows([]); // fallback to empty array on error
@@ -30,8 +35,15 @@ useEffect(() => {
       });
       const data = await res.json();
       alert(`✅ Saved: ${data.message}`);
-      // Refresh list after save
-      setSavedWorkflows((prev) => [...prev, fullData]);
+
+      // Reload workflows from backend and set the latest as current
+      const wfRes = await fetch(`http://localhost:8000/workflows/user/${username}`);
+      const wfList = await wfRes.json();
+      setSavedWorkflows(Array.isArray(wfList) ? wfList : []);
+      // Set the last workflow (most recently saved) as current
+      if (Array.isArray(wfList) && wfList.length > 0) {
+        setCurrentWorkflow(wfList[wfList.length - 1]);
+      }
     } catch (err) {
       alert("❌ Failed to save workflow");
       console.error(err);
@@ -57,8 +69,15 @@ useEffect(() => {
   };
 
   const loadWorkflow = (wf: any) => {
+    console.log("[FRONTEND] Loading workflow to canvas:", wf); // <-- LOG
+      let parsedWorkflow = wf;
+  if (typeof wf.workflow === "string") {
+    parsedWorkflow = { ...wf, workflow: JSON.parse(wf.workflow) };
+  }
+
     if (canvasRef.current?.loadWorkflow) {
-      canvasRef.current.loadWorkflow(wf);
+      canvasRef.current.loadWorkflow(parsedWorkflow);
+      setCurrentWorkflow(parsedWorkflow);
     }
   };
 
@@ -80,12 +99,27 @@ useEffect(() => {
         <h3 style={{ marginTop: 20 }}>📁 My Workflows</h3>
         <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
           {savedWorkflows.map((wf, index) => (
-            <li key={index}>
+            <li key={index} style={{ display: 'flex', alignItems: 'center' }}>
               <button
                 style={{ margin: '5px 0', width: '100%' }}
                 onClick={() => loadWorkflow(wf)}
               >
                 {wf.name}
+              </button>
+              <button
+                style={{ marginLeft: 8, color: 'red' }}
+                onClick={async () => {
+                  if (!window.confirm(`Delete workflow "${wf.name}"?`)) return;
+                  const res = await fetch(`http://localhost:8000/workflows/delete/${wf.id}`, {
+                    method: "DELETE",
+                  });
+                  const data = await res.json();
+                  alert(data.message);
+                  setSavedWorkflows((prev) => prev.filter(w => w.id !== wf.id));
+                }}
+                title="Delete"
+              >
+                ❌
               </button>
             </li>
           ))}
@@ -99,7 +133,44 @@ useEffect(() => {
             ▶️ Run
           </button>
         </div>
+
+
+
+
+        <div>
+          <label>
+            Schedule (minutes):
+            <input
+              type="number"
+              value={schedule}
+              onChange={(e) => setSchedule(Number(e.target.value))}
+              min={1}
+            />
+          </label>
+          <button
+    onClick={async () => {
+      // Replace with your selected workflow's ID
+       if (!currentWorkflow || !currentWorkflow.id) {
+      alert("Please load a workflow to schedule.");
+      return;
+    }
+     
+      const res = await fetch("http://localhost:8000/workflows/schedule", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ workflow_id: currentWorkflow.id,schedule }),
+      });
+      const data = await res.json();
+      alert(data.message);
+    }}
+    style={{ marginLeft: 12 }}
+  >
+    Schedule
+  </button>
+        </div>
       </div>
+
+      
 
       {/* Canvas */}
       <div style={{ flex: 1 }}>
