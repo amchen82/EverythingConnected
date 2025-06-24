@@ -1,5 +1,5 @@
 # backend/routers/workflows.py
-from fastapi import APIRouter, HTTPException, Depends
+from fastapi import APIRouter, HTTPException, Depends, Request
 from sqlalchemy.orm import Session
 from models.workflow import Workflow
 from models.db import WorkflowDB, UserDB
@@ -67,13 +67,16 @@ def save_workflow(workflow: Workflow, db: Session = Depends(get_db)):
     return {"message": "Workflow saved"}
 
 @router.post("/run")
-def run_workflow(workflow: Workflow):
+def run_workflow(workflow: Workflow, request: Request):
     trigger_data = None
-
+    gmail_token = request.headers.get("x-gmail-token")  # Get token from header
+    print("Running workflow with Gmail token:", gmail_token)
+    print("Headers:", request.headers)  # <-- Log headers for debuggingRequest.headers)  # <-- Log headers for debugging
+    
     for step in workflow.workflow:
         if step.type == "trigger" and step.service == "gmail":
             print("checking new email")
-            trigger_data = check_new_email()
+            trigger_data = check_new_email(gmail_token)  # Pass token
             if not trigger_data:
                 return {"message": "No new email."}
 

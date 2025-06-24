@@ -53,17 +53,35 @@ useEffect(() => {
   const runWorkflow = async () => {
     const workflow = canvasRef.current?.getWorkflowJson?.("temp-run");
     const fullData = { ...workflow, owner: username };
-
+    const gmailToken = localStorage.getItem("gmail_token");
+    console.log("gmailToken", gmailToken);
     try {
       const res = await fetch("http://localhost:8000/workflows/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { "Content-Type": "application/json" ,
+        ...(gmailToken ? { "X-Gmail-Token": gmailToken } : {})},
         body: JSON.stringify(fullData),
       });
       const data = await res.json();
-      alert(`🚀 Run: ${data.message}`);
+      console.log("[FRONTEND] Workflow run result:", data); // <-- LOG
+
+      if (canvasRef.current?.setOutput) {
+        console.log("[FRONTEND] Setting output in canvas");
+        if (data.subject || data.body) {
+          canvasRef.current.setOutput(
+            `Subject: ${data.subject || ""}\n\n${data.body || ""}`
+          );
+        } else if (data.message) {
+          canvasRef.current.setOutput(data.message);
+        } else {
+          canvasRef.current.setOutput(JSON.stringify(data, null, 2));
+        }
+      }
     } catch (err) {
-      alert("❌ Failed to run workflow");
+      // Optionally show error in output panel
+      if (canvasRef.current?.setOutput) {
+        canvasRef.current.setOutput("❌ Failed to run workflow");
+      }
       console.error(err);
     }
   };
@@ -80,6 +98,8 @@ useEffect(() => {
       setCurrentWorkflow(parsedWorkflow);
     }
   };
+
+
 
   return (
     <div style={{ display: 'flex', height: '100vh' }}>
