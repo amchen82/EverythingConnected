@@ -6,6 +6,7 @@ const WorkflowBuilder = ({ username }: { username: string }) => {
   const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
    const [schedule, setSchedule] = useState<number>(5); // default 5 minutes
    const [currentWorkflow, setCurrentWorkflow] = useState<any | null>(null);
+   const [currentWorkflowId, setCurrentWorkflowId] = useState<string | null>(null);
 
   // Fetch saved workflows for this user
 useEffect(() => {
@@ -63,6 +64,7 @@ useEffect(() => {
         body: JSON.stringify(fullData),
       });
       const data = await res.json();
+      setCurrentWorkflowId(data.workflow_id); // <--- Add this
       console.log("[FRONTEND] Workflow run result:", data); // <-- LOG
 
       if (canvasRef.current?.setOutput) {
@@ -194,7 +196,7 @@ useEffect(() => {
 
       {/* Canvas */}
       <div style={{ flex: 1 }}>
-        <Canvas ref={canvasRef} />
+        <Canvas ref={canvasRef} currentWorkflowId={currentWorkflowId} />
       </div>
     </div>
   );

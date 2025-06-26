@@ -60,3 +60,29 @@ The `backend` directory contains a Python FastAPI application that provides REST
 
 - Start the backend with `uvicorn main:app --reload` in the `backend` directory.
 - The backend listens on `http://localhost:8000` and connects to the frontend at the same address.
+
+docker run -p 6379:6379 redis
+celery -A celery_app.celery_app worker --loglevel=info --pool=solo
+
+
+
+
+
+# Change Summary - 2025/06/23
+
+## Frontend
+- Improved Google Sign-In integration in Node Edit popup (now uses OAuth2 access token for Gmail API).
+- Added professional status display and Sign Out button for Gmail connection in Node Edit.
+- Added output panel at the bottom of Canvas to display workflow run results.
+- Updated workflow run logic to send Gmail token and display backend messages in the output panel instead of alerts.
+- Removed unused `handleRun` function for clarity.
+- Fixed Canvas ref and imperative handle to ensure output updates correctly.
+
+## Backend
+- Updated `/workflows/run` endpoint to return new email summary or message for Canvas output.
+- Improved Gmail service to use access token for fetching latest email.
+- Added logging for debugging token passing and backend responses.
+
+## General
+- Updated README with tonight’s changes.
+- Improved error handling and logging for both frontend and backend.

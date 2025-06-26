@@ -31,11 +31,18 @@ function parseJwt(token: string) {
   }
 }
 
-const Canvas = forwardRef((props, ref) => {
+// Add this interface for props
+interface CanvasProps {
+  currentWorkflowId?: string | null;
+}
+
+const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
 const [nodes, setNodes, onNodesChange] = useNodesState([]);
 const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 const [output, setOutput] = useState<string>("");
+const [logOutput, setLogOutput] = useState<string[]>([]);
+const wsRef = useRef<WebSocket | null>(null);
 const onConnect = useCallback((params:Connection) => setEdges((eds) => addEdge(params, eds)), []);
 
 
@@ -167,13 +174,22 @@ useImperativeHandle(ref, () => ({
       const tokenClient = window.google.accounts.oauth2.initTokenClient({
         client_id: "600728715852-5grvn63j2hhnir4448fcbgeoa2t92bre.apps.googleusercontent.com", // Use client ID from .env
         scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        callback: (response: any) => {
-           console.log("Google login callback", response);
+        callback: async (response: any) => {
+          console.log("Google login callback", response);
           localStorage.setItem("gmail_token", response.access_token);
-          console.log(localStorage.getItem("gmail_token"));
-          const payload = parseJwt(response.access_token);
-          const user = payload?.email || payload?.name || null;
-          setGmailUser(user);
+
+          // Fetch user info using the access token
+          try {
+            const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+              headers: {
+                Authorization: `Bearer ${response.access_token}`,
+              },
+            });
+            const userInfo = await userInfoRes.json();
+            setGmailUser(userInfo.email || userInfo.name || null);
+          } catch (err) {
+            setGmailUser("Connected");
+          }
         },
       });
 
@@ -186,6 +202,19 @@ useImperativeHandle(ref, () => ({
       });
     }
   }, [selectedNode, gmailUser]);
+
+  // Subscribe to logs when a workflow is run
+  useEffect(() => {
+    if (!props.currentWorkflowId) return;
+    setLogOutput([]); // Clear previous logs
+    wsRef.current = new WebSocket(`ws://localhost:8000/workflows/ws/workflow_log/${props.currentWorkflowId}`);
+    wsRef.current.onmessage = (event) => {
+      setLogOutput((prev) => [...prev, event.data]);
+    };
+    return () => {
+      wsRef.current?.close();
+    };
+  }, [props.currentWorkflowId]);
 
   return (
     <div style={{ height: '100%', display: 'flex', flexDirection: 'column' }} onDrop={onDrop} onDragOver={(e) => e.preventDefault()}>
@@ -310,7 +339,7 @@ useImperativeHandle(ref, () => ({
       >
         <strong>Output:</strong>
         <div style={{ marginTop: 8, whiteSpace: "pre-wrap" }}>
-          {output || "No output yet."}
+          {logOutput.length ? logOutput.join('\n') : "No output yet."}
         </div>
       </div>
     </div>

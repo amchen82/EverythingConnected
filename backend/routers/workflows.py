@@ -1,5 +1,5 @@
 # backend/routers/workflows.py
-from fastapi import APIRouter, HTTPException, Depends, Request
+from fastapi import APIRouter, HTTPException, Depends, Request, WebSocket
 from sqlalchemy.orm import Session
 from models.workflow import Workflow
 from models.db import WorkflowDB, UserDB
@@ -10,6 +10,14 @@ import json
 from tasks import run_workflow_task 
 
 from pydantic import BaseModel
+import redis
+import asyncio
+
+r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
+def log_to_redis(workflow_id, message):
+    print(f"[LOG] [{workflow_id}] {message}")  # Debug print
+    r.rpush(f"workflow:{workflow_id}:log", message)
 
 class ScheduleRequest(BaseModel):
     workflow_id: int
@@ -67,26 +75,36 @@ def save_workflow(workflow: Workflow, db: Session = Depends(get_db)):
     return {"message": "Workflow saved"}
 
 @router.post("/run")
-def run_workflow(workflow: Workflow, request: Request):
+def run_workflow(workflow: dict, request: Request):
+    workflow_id = workflow.get("id", "default")
+    print(f"[RUN] Received workflow run for ID: {workflow_id}")
+    log_to_redis(workflow_id, "------------------------------------------------------")
+    log_to_redis(workflow_id, "Workflow started.")
+    gmail_token = request.headers.get("x-gmail-token")
+    print(f"[RUN] Gmail token: {gmail_token}")
+  
+
     trigger_data = None
-    gmail_token = request.headers.get("x-gmail-token")  # Get token from header
-    print("Running workflow with Gmail token:", gmail_token)
-    print("Headers:", request.headers)  # <-- Log headers for debuggingRequest.headers)  # <-- Log headers for debugging
-    
-    for step in workflow.workflow:
-        if step.type == "trigger" and step.service == "gmail":
-            print("checking new email")
-            trigger_data = check_new_email(gmail_token)  # Pass token
+    for step in workflow.get("workflow", []):
+        print(f"[RUN] Step: {step}")
+        if step.get("type") == "trigger" and step.get("service") == "gmail":
+            log_to_redis(workflow_id, "Checking new email...")
+            trigger_data = check_new_email(gmail_token)
+            print(f"[RUN] Trigger data: {trigger_data}")
             if not trigger_data:
-                return {"message": "No new email."}
-
-        elif step.type == "action" and step.service == "notion":
-        
+                log_to_redis(workflow_id, "No new email.")
+                return {"message": "No new email.", "workflow_id": workflow_id}
+            log_to_redis(workflow_id, f"New email: {trigger_data['subject']}")
+        elif step.get("type") == "action" and step.get("service") == "notion":
             if trigger_data:
-                print("create notion page")
+                log_to_redis(workflow_id, "Creating Notion page...")
                 create_notion_page(trigger_data)
+                log_to_redis(workflow_id, "Notion page created.")
 
-    return {"message": "Workflow executed."}
+    log_to_redis(workflow_id, "Workflow executed.")
+    log_to_redis(workflow_id,"------------------------------------------------------")
+    print(f"[RUN] Workflow {workflow_id} executed.")
+    return {"message": "Workflow executed.", "workflow_id": workflow_id}
 
 @router.delete("/delete/{workflow_id}")
 def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
@@ -96,4 +114,23 @@ def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
     db.delete(wf)
     db.commit()
     return {"message": "Workflow deleted"}
+
+@router.websocket("/ws/workflow_log/{workflow_id}")
+async def websocket_workflow_log(websocket: WebSocket, workflow_id: str):
+    print(f"[WS] Connection attempt for workflow_id: {workflow_id}")
+    await websocket.accept()
+    last_index = r.llen(f"workflow:{workflow_id}:log")  # Start at the end
+    try:
+        while True:
+            logs = r.lrange(f"workflow:{workflow_id}:log", last_index, -1)
+            if logs:
+                for log in logs:
+                    print(f"[WS] Sending log to client: {log}")
+                    await websocket.send_text(log)
+                last_index += len(logs)
+            await asyncio.sleep(1)
+    except Exception as e:
+        print(f"[WS] Exception: {e}")
+    finally:
+        print(f"[WS] Connection closed for workflow_id: {workflow_id}")
 
