@@ -1,7 +1,15 @@
 import React, { useRef, useEffect, useState } from 'react';
 import Canvas from '../components/Canvas';
+import {
+  Paper, Box, Typography, Stack, Button, Divider, List, ListItem, IconButton, TextField
+} from '@mui/material';
+import DeleteIcon from '@mui/icons-material/Delete';
+import EmailIcon from '@mui/icons-material/Email';
+import BookIcon from '@mui/icons-material/Book';
+import PlayCircleIcon from '@mui/icons-material/PlayCircle';
+import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 
-const WorkflowBuilder = ({ username }: { username: string }) => {
+const WorkflowBuilder = ({ username, mode }: { username: string, mode: 'light' | 'dark' }) => {
   const canvasRef = useRef<any>(null);
   const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
    const [schedule, setSchedule] = useState<number>(5); // default 5 minutes
@@ -104,101 +112,104 @@ useEffect(() => {
 
 
   return (
-    <div style={{ display: 'flex', height: '100vh' }}>
+    <Box display="flex" height="100vh">
       {/* Sidebar */}
-      <div style={{ width: 220, padding: 10, borderRight: '1px solid #ccc' }}>
-        <h3>🛠 Tools</h3>
-        <div draggable onDragStart={(e) => e.dataTransfer.setData('type', 'gmail')}>
-          📧 Gmail
-        </div>
-        <div draggable onDragStart={(e) => e.dataTransfer.setData('type', 'notion')}>
-          📓 Notion
-        </div>
-        <div draggable onDragStart={(e) => e.dataTransfer.setData('type', 'youtube')}>
-          ▶️ YouTube
-        </div>
-
-        <h3 style={{ marginTop: 20 }}>📁 My Workflows</h3>
-        <ul style={{ listStyle: 'none', paddingLeft: 0 }}>
-          {savedWorkflows.map((wf, index) => (
-            <li key={index} style={{ display: 'flex', alignItems: 'center' }}>
-              <button
-                style={{ margin: '5px 0', width: '100%' }}
-                onClick={() => loadWorkflow(wf)}
-              >
-                {wf.name}
-              </button>
-              <button
-                style={{ marginLeft: 8, color: 'red' }}
-                onClick={async () => {
-                  if (!window.confirm(`Delete workflow "${wf.name}"?`)) return;
-                  const res = await fetch(`http://localhost:8000/workflows/delete/${wf.id}`, {
-                    method: "DELETE",
-                  });
-                  const data = await res.json();
-                  alert(data.message);
-                  setSavedWorkflows((prev) => prev.filter(w => w.id !== wf.id));
-                }}
-                title="Delete"
-              >
-                ❌
-              </button>
-            </li>
-          ))}
-        </ul>
-
-        <div style={{ marginTop: 20 }}>
-          <button onClick={saveWorkflow} style={{ width: '100%', marginBottom: 8 }}>
-            💾 Save
-          </button>
-          <button onClick={runWorkflow} style={{ width: '100%' }}>
-            ▶️ Run
-          </button>
-        </div>
-
-
-
-
-        <div>
-          <label>
-            Schedule (minutes):
-            <input
+      <Paper elevation={4} sx={{ width: 280, p: 3, minHeight: '100vh', borderRadius: 3, bgcolor: mode === 'dark' ? '#232323' : '#fff' }}>
+        <Stack spacing={4}>
+          <Box>
+            <Typography variant="h6" fontWeight={700} gutterBottom>
+              <EmailIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
+              Tools
+            </Typography>
+            <Stack spacing={2}>
+              <Button startIcon={<EmailIcon />} variant="contained" color="primary" fullWidth>
+                Gmail
+              </Button>
+              <Button startIcon={<BookIcon />} variant="contained" color="secondary" fullWidth>
+                Notion
+              </Button>
+              <Button startIcon={<PlayCircleIcon />} variant="contained" color="info" fullWidth>
+                YouTube
+              </Button>
+            </Stack>
+          </Box>
+          <Divider />
+          <Box>
+            <Typography variant="subtitle1" fontWeight={600} gutterBottom>
+              <FolderOpenIcon fontSize="small" sx={{ mr: 1, color: 'warning.main' }} />
+              My Workflows
+            </Typography>
+            <List dense>
+              {savedWorkflows.map((wf, index) => (
+                <ListItem
+                  key={index}
+                  secondaryAction={
+                    <IconButton edge="end" aria-label="delete" onClick={async () => {
+                      if (!window.confirm(`Delete workflow "${wf.name}"?`)) return;
+                      const res = await fetch(`http://localhost:8000/workflows/delete/${wf.id}`, { method: "DELETE" });
+                      const data = await res.json();
+                      alert(data.message);
+                      setSavedWorkflows(prev => prev.filter(w => w.id !== wf.id));
+                    }}>
+                      <DeleteIcon color="error" />
+                    </IconButton>
+                  }
+                  disablePadding
+                >
+                  <Button
+                    variant="text"
+                    fullWidth
+                    onClick={() => loadWorkflow(wf)}
+                    sx={{ justifyContent: 'flex-start' }}
+                  >
+                    {wf.name}
+                  </Button>
+                </ListItem>
+              ))}
+            </List>
+          </Box>
+          <Divider />
+          <Stack spacing={1} mb={2}>
+            <Button variant="contained" color="success" onClick={saveWorkflow}>💾 Save</Button>
+            <Button variant="contained" color="primary" onClick={runWorkflow}>▶️ Run</Button>
+          </Stack>
+          <Box>
+            <TextField
+              label="Schedule (minutes)"
               type="number"
               value={schedule}
-              onChange={(e) => setSchedule(Number(e.target.value))}
-              min={1}
+              onChange={e => setSchedule(Number(e.target.value))}
+              size="small"
+              InputProps={{ inputProps: { min: 1 } }}
+              sx={{ width: 120, mr: 1 }}
             />
-          </label>
-          <button
-    onClick={async () => {
-      // Replace with your selected workflow's ID
-       if (!currentWorkflow || !currentWorkflow.id) {
-      alert("Please load a workflow to schedule.");
-      return;
-    }
-     
-      const res = await fetch("http://localhost:8000/workflows/schedule", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ workflow_id: currentWorkflow.id,schedule }),
-      });
-      const data = await res.json();
-      alert(data.message);
-    }}
-    style={{ marginLeft: 12 }}
-  >
-    Schedule
-  </button>
-        </div>
-      </div>
-
-      
-
+            <Button
+              variant="outlined"
+              color="warning"
+              onClick={async () => {
+                if (!currentWorkflow || !currentWorkflow.id) {
+                  alert("Please load a workflow to schedule.");
+                  return;
+                }
+                const res = await fetch("http://localhost:8000/workflows/schedule", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ workflow_id: currentWorkflow.id, schedule }),
+                });
+                const data = await res.json();
+                alert(data.message);
+              }}
+            >
+              Schedule
+            </Button>
+          </Box>
+        </Stack>
+      </Paper>
       {/* Canvas */}
-      <div style={{ flex: 1 }}>
-        <Canvas ref={canvasRef} currentWorkflowId={currentWorkflowId} />
-      </div>
-    </div>
+      <Box flex={1} bgcolor="#f7f7f7">
+        <Canvas ref={canvasRef} currentWorkflowId={currentWorkflowId} mode={mode} />
+      </Box>
+    </Box>
   );
 };
 
