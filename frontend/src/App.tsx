@@ -1,5 +1,5 @@
-import React, { useState, useMemo } from 'react';
-import { ThemeProvider, createTheme, CssBaseline, IconButton } from '@mui/material';
+import React, { useState, useMemo, useEffect } from 'react';
+import { ThemeProvider, createTheme, CssBaseline, IconButton, Button } from '@mui/material';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import WorkflowBuilder from './pages/WorkflowBuilder';
@@ -10,6 +10,12 @@ const App = () => {
   const [mode, setMode] = useState<'light' | 'dark'>('light');
   const theme = useMemo(() => createTheme({ palette: { mode } }), [mode]);
 
+  // Auto-login if user is in localStorage
+  useEffect(() => {
+    const savedUser = localStorage.getItem('user');
+    if (savedUser) setUser(savedUser);
+  }, []);
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
@@ -19,9 +25,21 @@ const App = () => {
         </IconButton>
       </div>
       {user ? (
-        <WorkflowBuilder username={user} mode={mode} />
+        <>
+          <WorkflowBuilder username={user} mode={mode} />
+          <Button onClick={() => { localStorage.removeItem('user'); setUser(null); }}>
+            Logout
+          </Button>
+        </>
       ) : (
-        <Login onLogin={setUser} mode={mode} toggleMode={() => setMode(mode === 'light' ? 'dark' : 'light')} />
+        <Login
+          onLogin={u => {
+            localStorage.setItem('user', u);
+            setUser(u);
+          }}
+          mode={mode}
+          toggleMode={() => setMode(mode === 'light' ? 'dark' : 'light')}
+        />
       )}
     </ThemeProvider>
   );

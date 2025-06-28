@@ -63,12 +63,15 @@ useEffect(() => {
     const workflow = canvasRef.current?.getWorkflowJson?.("temp-run");
     const fullData = { ...workflow, owner: username };
     const gmailToken = localStorage.getItem("gmail_token");
-    console.log("gmailToken", gmailToken);
+    const notionToken = localStorage.getItem("notion_token");
     try {
       const res = await fetch("http://localhost:8000/workflows/run", {
         method: "POST",
-        headers: { "Content-Type": "application/json" ,
-        ...(gmailToken ? { "X-Gmail-Token": gmailToken } : {})},
+        headers: {
+          "Content-Type": "application/json",
+          ...(gmailToken ? { "X-Gmail-Token": gmailToken } : {}),
+          ...(notionToken ? { "X-Notion-Token": notionToken } : {}),
+        },
         body: JSON.stringify(fullData),
       });
       const data = await res.json();

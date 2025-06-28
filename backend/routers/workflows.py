@@ -5,7 +5,7 @@ from models.workflow import Workflow
 from models.db import WorkflowDB, UserDB
 from database import SessionLocal
 from services.gmail import check_new_email
-from services.notion import create_notion_page  # if you have this service
+from services.notion import create_notion_page
 import json
 from tasks import run_workflow_task 
 
@@ -77,16 +77,12 @@ def save_workflow(workflow: Workflow, db: Session = Depends(get_db)):
 @router.post("/run")
 def run_workflow(workflow: dict, request: Request):
     workflow_id = workflow.get("id", "default")
-    print(f"[RUN] Received workflow run for ID: {workflow_id}")
     log_to_redis(workflow_id, "------------------------------------------------------")
     log_to_redis(workflow_id, "Workflow started.")
     gmail_token = request.headers.get("x-gmail-token")
-    print(f"[RUN] Gmail token: {gmail_token}")
-  
-
+    notion_token = request.headers.get("x-notion-token")
     trigger_data = None
     for step in workflow.get("workflow", []):
-        print(f"[RUN] Step: {step}")
         if step.get("type") == "trigger" and step.get("service") == "gmail":
             log_to_redis(workflow_id, "Checking new email...")
             trigger_data = check_new_email(gmail_token)
@@ -96,14 +92,17 @@ def run_workflow(workflow: dict, request: Request):
                 return {"message": "No new email.", "workflow_id": workflow_id}
             log_to_redis(workflow_id, f"New email: {trigger_data['subject']}")
         elif step.get("type") == "action" and step.get("service") == "notion":
-            if trigger_data:
+            if trigger_data and notion_token:
                 log_to_redis(workflow_id, "Creating Notion page...")
-                create_notion_page(trigger_data)
-                log_to_redis(workflow_id, "Notion page created.")
-
+                title = trigger_data.get("subject", "New Page")
+                content = trigger_data.get("body", "Created from EverythingConnected")
+                result = create_notion_page(notion_token, title=title, content=content)
+                if result:
+                    log_to_redis(workflow_id, "Notion page created.")
+                else:
+                    log_to_redis(workflow_id, "Failed to create Notion page.")
     log_to_redis(workflow_id, "Workflow executed.")
     log_to_redis(workflow_id,"------------------------------------------------------")
-    print(f"[RUN] Workflow {workflow_id} executed.")
     return {"message": "Workflow executed.", "workflow_id": workflow_id}
 
 @router.delete("/delete/{workflow_id}")

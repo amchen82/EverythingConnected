@@ -164,6 +164,7 @@ useImperativeHandle(ref, () => ({
 
   const googleButtonRef = useRef<HTMLDivElement>(null);
   const [gmailUser, setGmailUser] = useState<string | null>(null);
+  const [notionUser, setNotionUser] = useState<string | null>(null);
 
   useEffect(() => {
     // On mount, check if already connected
@@ -233,6 +234,17 @@ useImperativeHandle(ref, () => ({
       wsRef.current?.close();
     };
   }, [props.currentWorkflowId]);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const notionToken = params.get('notion_token');
+    if (notionToken) {
+      localStorage.setItem('notion_token', notionToken);
+      setNotionUser('Connected');
+      // Optionally, remove token from URL
+      window.history.replaceState({}, document.title, window.location.pathname);
+    }
+  }, []);
 
   return (
     <div
@@ -354,6 +366,51 @@ useImperativeHandle(ref, () => ({
                     }}
                   >
                     Connect Gmail
+                  </Button>
+                )}
+              </Box>
+            )}
+            {selectedNode?.data.type === "action" && selectedNode?.data.label === "notion" && (
+              <Box mt={2} p={2} borderRadius={1} bgcolor={notionUser ? "success.light" : "grey.100"}>
+                <Stack direction="row" alignItems="center" spacing={1}>
+                  <Box
+                    sx={{
+                      width: 10,
+                      height: 10,
+                      borderRadius: '50%',
+                      bgcolor: notionUser ? "success.main" : "grey.400"
+                    }}
+                  />
+                  <Typography variant="body2">
+                    {notionUser
+                      ? <>Connected as <b>{notionUser}</b></>
+                      : "Not connected to Notion"}
+                  </Typography>
+                  {notionUser && (
+                    <Button
+                      size="small"
+                      color="error"
+                      variant="outlined"
+                      sx={{ ml: 2 }}
+                      onClick={() => {
+                        localStorage.removeItem("notion_token");
+                        setNotionUser(null);
+                      }}
+                    >
+                      Sign out
+                    </Button>
+                  )}
+                </Stack>
+                {!notionUser && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => {
+                      // Redirect to your backend's Notion OAuth endpoint
+                      window.location.href = "http://localhost:8000/notion/oauth/start";
+                    }}
+                  >
+                    Connect Notion
                   </Button>
                 )}
               </Box>
