@@ -64,10 +64,11 @@ useImperativeHandle(ref, () => ({
   getWorkflowJson: (name: string) => ({
     name,
     workflow: nodes.map((n) => ({
-      id: n.id, // <-- Save node id!
+      id: n.id,
       type: n.data.type,
       service: n.data.label,
       action: n.data.action,
+      parentId: n.data.parentId, // <-- Add this line
     })),
     edges,
   }),
@@ -414,6 +415,18 @@ useImperativeHandle(ref, () => ({
                   </Button>
                 )}
               </Box>
+            )}
+            {selectedNode?.data.label === "notion" && (
+              <TextField
+                label="Notion Parent ID"
+                value={selectedNode?.data.parentId || ""}
+                onChange={e => updateSelectedField('parentId', e.target.value)}
+                placeholder="Enter Notion page or database ID"
+                size="small"
+                fullWidth
+                margin="dense"
+                helperText="Paste your Notion page or database ID here"
+              />
             )}
           </Box>
         </DialogContent>

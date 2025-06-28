@@ -96,7 +96,8 @@ def run_workflow(workflow: dict, request: Request):
                 log_to_redis(workflow_id, "Creating Notion page...")
                 title = trigger_data.get("subject", "New Page")
                 content = trigger_data.get("body", "Created from EverythingConnected")
-                result = create_notion_page(notion_token, title=title, content=content)
+                parent_id = step.get("parentId")  # <-- Get parentId from node
+                result = create_notion_page(notion_token, title=title, content=content, parent_id=parent_id)
                 if result:
                     log_to_redis(workflow_id, "Notion page created.")
                 else:
