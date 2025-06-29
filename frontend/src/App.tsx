@@ -26,7 +26,7 @@ const App = () => {
       </div>
       {user ? (
         <>
-          <WorkflowBuilder username={user} mode={mode} />
+          <WorkflowBuilder username={user} mode={mode} setMode={setMode} />
           <Button onClick={() => { localStorage.removeItem('user'); setUser(null); }}>
             Logout
           </Button>

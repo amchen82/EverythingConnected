@@ -3,13 +3,17 @@ import Canvas from '../components/Canvas';
 import {
   Paper, Box, Typography, Stack, Button, Divider, List, ListItem, IconButton, TextField
 } from '@mui/material';
+import { useTheme } from '@mui/material/styles'; // <-- ADD THIS
 import DeleteIcon from '@mui/icons-material/Delete';
 import EmailIcon from '@mui/icons-material/Email';
 import BookIcon from '@mui/icons-material/Book';
 import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
+import Brightness4Icon from '@mui/icons-material/Brightness4';
+import Brightness7Icon from '@mui/icons-material/Brightness7';
 
-const WorkflowBuilder = ({ username, mode }: { username: string, mode: 'light' | 'dark' }) => {
+const WorkflowBuilder = ({ username, mode, setMode }: { username: string, mode: 'light' | 'dark', setMode: (m: 'light' | 'dark') => void }) => {
+  const theme = useTheme(); // <-- ADD THIS
   const canvasRef = useRef<any>(null);
   const [savedWorkflows, setSavedWorkflows] = useState<any[]>([]);
    const [schedule, setSchedule] = useState<number>(5); // default 5 minutes
@@ -116,9 +120,29 @@ useEffect(() => {
 
   return (
     <Box display="flex" height="100vh">
+      {/* Theme toggle button in the top right */}
+    <Box sx={{ position: "fixed", top: 16, right: 16, zIndex: 2000 }}>
+      <Button
+        variant="outlined"
+        startIcon={mode === 'dark' ? <Brightness7Icon /> : <Brightness4Icon />}
+        onClick={() => setMode(mode === 'dark' ? 'light' : 'dark')}
+      >
+        {mode === 'dark' ? 'Light' : 'Dark'} Mode
+      </Button>
+    </Box>
       {/* Sidebar */}
-      <Paper elevation={4} sx={{ width: 280, p: 3, minHeight: '100vh', borderRadius: 3, bgcolor: mode === 'dark' ? '#232323' : '#fff' , display: 'flex',
-    flexDirection: 'column'}}>
+      <Paper
+        elevation={4}
+        sx={{
+          width: 280,
+          p: 3,
+          minHeight: '100vh',
+          borderRadius: 3,
+          bgcolor: theme.palette.background.paper, // <-- USE THEME
+          display: 'flex',
+          flexDirection: 'column'
+        }}
+      >
         <Stack spacing={4} sx={{ flex: 1 }}>
           <Box>
             <Typography variant="h6" fontWeight={700} gutterBottom>
@@ -217,7 +241,7 @@ useEffect(() => {
         </Stack>
       </Paper>
       {/* Canvas */}
-      <Box flex={1} bgcolor="#f7f7f7">
+      <Box flex={1} sx={{ bgcolor: theme.palette.background.default }}>
         <Canvas ref={canvasRef} currentWorkflowId={currentWorkflowId} mode={mode} />
       </Box>
     </Box>

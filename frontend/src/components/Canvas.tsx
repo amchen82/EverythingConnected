@@ -30,6 +30,7 @@ import {
   IconButton
 } from '@mui/material';
 import CloseIcon from "@mui/icons-material/Close";
+import { useTheme } from '@mui/material/styles';
 
 declare global {
   interface Window {
@@ -52,6 +53,8 @@ interface CanvasProps {
 }
 
 const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
+  const theme = useTheme();
+
 const [nodes, setNodes, onNodesChange] = useNodesState([]);
 const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 const [selectedNode, setSelectedNode] = useState<Node | null>(null);
@@ -462,11 +465,11 @@ useImperativeHandle(ref, () => ({
         sx={{
           mt: 'auto',
           borderRadius: 2,
-          bgcolor: props.mode === 'dark' ? '#232323' : '#fafafa',
+          bgcolor: theme.palette.background.paper,
           p: 2,
           fontFamily: 'monospace',
           fontSize: '1rem',
-          color: props.mode === 'dark' ? '#fff' : '#333',
+          color: theme.palette.text.primary,
           minHeight: 100,
           boxShadow: 1,
         }}
