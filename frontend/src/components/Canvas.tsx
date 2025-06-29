@@ -103,8 +103,9 @@ useImperativeHandle(ref, () => ({
   const onDrop = (event: React.DragEvent) => {
     event.preventDefault();
     const type = event.dataTransfer.getData('type');
+    if (!type) return;
     const position = {
-      x: event.clientX - 250,
+      x: event.clientX - 250, // adjust as needed for your layout
       y: event.clientY - 50,
     };
 
@@ -119,7 +120,7 @@ useImperativeHandle(ref, () => ({
       },
     };
 
-    setNodes((nds) => nds.concat(newNode));
+    setNodes(nds => nds.concat(newNode));
   };
 
   // const onConnect = (params: Connection) => setEdges((eds) => addEdge(params, eds));
@@ -284,6 +285,11 @@ useImperativeHandle(ref, () => ({
         onConnect={onConnect}
         onNodeClick={onNodeClick}
         fitView
+        onDrop={onDrop}
+        onDragOver={e => {
+          e.preventDefault();
+          e.dataTransfer.dropEffect = 'move';
+        }}
       >
         <Controls />
         <Background />

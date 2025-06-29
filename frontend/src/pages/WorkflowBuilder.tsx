@@ -155,14 +155,35 @@ useEffect(() => {
                 variant="contained"
                 color="primary"
                 fullWidth
-                onClick={() => canvasRef.current?.addNodeAndOpenPanel("gmail")}
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'gmail');
+                }}
               >
                 Gmail
               </Button>
-              <Button startIcon={<BookIcon />} variant="contained" color="secondary" fullWidth>
+              <Button
+                startIcon={<BookIcon />}
+                variant="contained"
+                color="secondary"
+                fullWidth
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'notion');
+                }}
+              >
                 Notion
               </Button>
-              <Button startIcon={<PlayCircleIcon />} variant="contained" color="info" fullWidth>
+              <Button
+                startIcon={<PlayCircleIcon />}
+                variant="contained"
+                color="info"
+                fullWidth
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'youtube');
+                }}
+              >
                 YouTube
               </Button>
             </Stack>
