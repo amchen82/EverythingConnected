@@ -117,8 +117,9 @@ useEffect(() => {
   return (
     <Box display="flex" height="100vh">
       {/* Sidebar */}
-      <Paper elevation={4} sx={{ width: 280, p: 3, minHeight: '100vh', borderRadius: 3, bgcolor: mode === 'dark' ? '#232323' : '#fff' }}>
-        <Stack spacing={4}>
+      <Paper elevation={4} sx={{ width: 280, p: 3, minHeight: '100vh', borderRadius: 3, bgcolor: mode === 'dark' ? '#232323' : '#fff' , display: 'flex',
+    flexDirection: 'column'}}>
+        <Stack spacing={4} sx={{ flex: 1 }}>
           <Box>
             <Typography variant="h6" fontWeight={700} gutterBottom>
               <EmailIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
@@ -137,6 +138,7 @@ useEffect(() => {
             </Stack>
           </Box>
           <Divider />
+          <Box sx={{ flexGrow: 1 }} />
           <Box>
             <Typography variant="subtitle1" fontWeight={600} gutterBottom>
               <FolderOpenIcon fontSize="small" sx={{ mr: 1, color: 'warning.main' }} />
