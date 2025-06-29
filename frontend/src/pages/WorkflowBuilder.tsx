@@ -126,7 +126,13 @@ useEffect(() => {
               Tools
             </Typography>
             <Stack spacing={2}>
-              <Button startIcon={<EmailIcon />} variant="contained" color="primary" fullWidth>
+              <Button
+                startIcon={<EmailIcon />}
+                variant="contained"
+                color="primary"
+                fullWidth
+                onClick={() => canvasRef.current?.addNodeAndOpenPanel("gmail")}
+              >
                 Gmail
               </Button>
               <Button startIcon={<BookIcon />} variant="contained" color="secondary" fullWidth>

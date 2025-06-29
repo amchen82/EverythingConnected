@@ -26,8 +26,10 @@ import {
   Box,
   Typography,
   Stack,
-  Paper
+  Paper,
+  IconButton
 } from '@mui/material';
+import CloseIcon from "@mui/icons-material/Close";
 
 declare global {
   interface Window {
@@ -55,6 +57,7 @@ const [edges, setEdges, onEdgesChange] = useEdgesState([]);
 const [selectedNode, setSelectedNode] = useState<Node | null>(null);
 const [output, setOutput] = useState<string>("");
 const [logOutput, setLogOutput] = useState<string[]>([]);
+const [openNodeIds, setOpenNodeIds] = useState<string[]>([]);
 const wsRef = useRef<WebSocket | null>(null);
 const onConnect = useCallback((params:Connection) => setEdges((eds) => addEdge(params, eds)), []);
 
@@ -119,7 +122,7 @@ useImperativeHandle(ref, () => ({
   // const onConnect = (params: Connection) => setEdges((eds) => addEdge(params, eds));
 
   const onNodeClick = (_: any, node: Node) => {
-    setSelectedNode(node);
+    setOpenNodeIds(ids => ids.includes(node.id) ? ids : [...ids, node.id]);
   };
 
   const handleNodeUpdate = (e: React.FormEvent) => {
@@ -247,16 +250,29 @@ useImperativeHandle(ref, () => ({
     }
   }, []);
 
+  // Add this function to add a node and open its panel
+  const addNodeAndOpenPanel = (type: string) => {
+    const verticalSpacing = 120;
+    const startX = 300;
+    const startY = 100;
+    const nodeCount = nodes.length;
+    const newNode = {
+      id: uuidv4(),
+      type: 'default',
+      position: { x: startX, y: startY + nodeCount * verticalSpacing },
+      data: {
+        label: type,
+        type: type === 'gmail' ? 'trigger' : 'action',
+        action: 'default_action',
+      },
+    };
+    setNodes(nds => nds.concat(newNode));
+    setOpenNodeIds(ids => [...ids, newNode.id]);
+  };
+
+  // Render node panels as a vertical list on the right
   return (
-    <div
-      style={{
-        height: '100%',
-        display: 'flex',
-        flexDirection: 'column',
-        background: props.mode === 'dark' ? '#181818' : '#fff',
-        color: props.mode === 'dark' ? '#fff' : '#000'
-      }}
-    >
+    <Box sx={{ position: "relative", height: "100%" }}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -460,7 +476,213 @@ useImperativeHandle(ref, () => ({
           {logOutput.length ? logOutput.join('\n') : "No output yet."}
         </Box>
       </Paper>
-    </div>
+
+      {/* Right sidebar for node panels */}
+      <Box
+        sx={{
+          position: "absolute",
+          top: 0,
+          right: 0,
+          height: "100%",
+          display: "flex",
+          flexDirection: "column",
+          gap: 2,
+          zIndex: 100,
+          pointerEvents: "none",
+        }}
+      >
+        {openNodeIds.map((id) => {
+          const node = nodes.find(n => n.id === id);
+          if (!node) return null;
+          return (
+            <Paper
+              key={id}
+              elevation={4}
+              sx={{
+                minWidth: 340,
+                maxWidth: 400,
+                m: 2,
+                mb: 0,
+                pointerEvents: "auto",
+                position: "relative",
+              }}
+            >
+              <Box sx={{ p: 2 }}>
+                <Box display="flex" alignItems="center" justifyContent="space-between">
+                  <Typography variant="h6">Edit Node: {node.data.label}</Typography>
+                  <IconButton size="small" onClick={() => setOpenNodeIds(ids => ids.filter(nid => nid !== id))}>
+                    <CloseIcon />
+                  </IconButton>
+                </Box>
+                {/* Node edit fields */}
+                <Box
+                  component="form"
+                  sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 300 }}
+                  onSubmit={e => {
+                    e.preventDefault();
+                    // No modal to close, just update node in place
+                  }}
+                >
+                  <TextField
+                    label="Type"
+                    value={node.data.type || ''}
+                    onChange={e => setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, type: e.target.value } } : n))}
+                    placeholder="trigger / action"
+                    size="small"
+                    fullWidth
+                    margin="dense"
+                  />
+                  <TextField
+                    label="Service"
+                    value={node.data.label || ''}
+                    onChange={e => setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, label: e.target.value } } : n))}
+                    placeholder="gmail / notion / etc"
+                    size="small"
+                    fullWidth
+                    margin="dense"
+                  />
+                  <TextField
+                    label="Action"
+                    value={node.data.action || ''}
+                    onChange={e => setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, action: e.target.value } } : n))}
+                    placeholder="new_file / create_page"
+                    size="small"
+                    fullWidth
+                    margin="dense"
+                  />
+
+                  {/* Gmail trigger fields */}
+                  {node.data.type === "trigger" && node.data.label === "gmail" && (
+                    <Box mt={2} p={2} borderRadius={1} bgcolor={gmailUser ? "success.light" : "grey.100"}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            bgcolor: gmailUser ? "success.main" : "grey.400"
+                          }}
+                        />
+                        <Typography variant="body2">
+                          {gmailUser
+                            ? <>Logged in as <b>{gmailUser}</b></>
+                            : "Not connected to Gmail"}
+                        </Typography>
+                        {gmailUser && (
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            sx={{ ml: 2 }}
+                            onClick={() => {
+                              localStorage.removeItem("gmail_token");
+                              setGmailUser(null);
+                            }}
+                          >
+                            Sign out
+                          </Button>
+                        )}
+                      </Stack>
+                      {!gmailUser && (
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => {
+                            if (window.google) {
+                              const tokenClient = window.google.accounts.oauth2.initTokenClient({
+                                client_id: "600728715852-5grvn63j2hhnir4448fcbgeoa2t92bre.apps.googleusercontent.com",
+                                scope: 'https://www.googleapis.com/auth/gmail.readonly',
+                                callback: async (response: any) => {
+                                  localStorage.setItem("gmail_token", response.access_token);
+                                  try {
+                                    const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
+                                      headers: {
+                                        Authorization: `Bearer ${response.access_token}`,
+                                      },
+                                    });
+                                    const userInfo = await userInfoRes.json();
+                                    setGmailUser(userInfo.email || userInfo.name || null);
+                                  } catch (err) {
+                                    setGmailUser("Connected");
+                                  }
+                                },
+                              });
+                              tokenClient.requestAccessToken();
+                            }
+                          }}
+                        >
+                          Connect Gmail
+                        </Button>
+                      )}
+                    </Box>
+                  )}
+
+                  {/* Notion action fields */}
+                  {node.data.type === "action" && node.data.label === "notion" && (
+                    <Box mt={2} p={2} borderRadius={1} bgcolor={notionUser ? "success.light" : "grey.100"}>
+                      <Stack direction="row" alignItems="center" spacing={1}>
+                        <Box
+                          sx={{
+                            width: 10,
+                            height: 10,
+                            borderRadius: '50%',
+                            bgcolor: notionUser ? "success.main" : "grey.400"
+                          }}
+                        />
+                        <Typography variant="body2">
+                          {notionUser
+                            ? <>Connected as <b>{notionUser}</b></>
+                            : "Not connected to Notion"}
+                        </Typography>
+                        {notionUser && (
+                          <Button
+                            size="small"
+                            color="error"
+                            variant="outlined"
+                            sx={{ ml: 2 }}
+                            onClick={() => {
+                              localStorage.removeItem("notion_token");
+                              setNotionUser(null);
+                            }}
+                          >
+                            Sign out
+                          </Button>
+                        )}
+                      </Stack>
+                      {!notionUser && (
+                        <Button
+                          variant="contained"
+                          color="primary"
+                          onClick={() => {
+                            window.location.href = "http://localhost:8000/notion/oauth/start";
+                          }}
+                        >
+                          Connect Notion
+                        </Button>
+                      )}
+                    </Box>
+                  )}
+
+                  {/* Notion Parent ID field */}
+                  {node.data.label === "notion" && (
+                    <TextField
+                      label="Notion Parent ID"
+                      value={node.data.parentId || ""}
+                      onChange={e => setNodes(nds => nds.map(n => n.id === id ? { ...n, data: { ...n.data, parentId: e.target.value } } : n))}
+                      placeholder="Enter Notion page or database ID"
+                      size="small"
+                      fullWidth
+                      margin="dense"
+                      helperText="Paste your Notion page or database ID here"
+                    />
+                  )}
+                </Box>
+              </Box>
+            </Paper>
+          );
+        })}
+      </Box>
+    </Box>
   );
 });
 
