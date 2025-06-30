@@ -226,38 +226,41 @@ useEffect(() => {
           </Box>
           <Divider />
           <Stack spacing={1} mb={2}>
-            <Button variant="contained" color="success" onClick={saveWorkflow}>💾 Save</Button>
-            <Button variant="contained" color="primary" onClick={runWorkflow}>▶️ Run</Button>
+            <Button variant="contained" color="success" onClick={saveWorkflow} fullWidth>💾 Save</Button>
+            <Button variant="contained" color="primary" onClick={runWorkflow} fullWidth>▶️ Run</Button>
           </Stack>
           <Box>
-            <TextField
-              label="Schedule (minutes)"
-              type="number"
-              value={schedule}
-              onChange={e => setSchedule(Number(e.target.value))}
-              size="small"
-              InputProps={{ inputProps: { min: 1 } }}
-              sx={{ width: 120, mr: 1 }}
-            />
-            <Button
-              variant="outlined"
-              color="warning"
-              onClick={async () => {
-                if (!currentWorkflow || !currentWorkflow.id) {
-                  alert("Please load a workflow to schedule.");
-                  return;
-                }
-                const res = await fetch("http://localhost:8000/workflows/schedule", {
-                  method: "POST",
-                  headers: { "Content-Type": "application/json" },
-                  body: JSON.stringify({ workflow_id: currentWorkflow.id, schedule }),
-                });
-                const data = await res.json();
-                alert(data.message);
-              }}
-            >
-              Schedule
-            </Button>
+            <Stack spacing={1}>
+              <TextField
+                label="Schedule (minutes)"
+                type="number"
+                value={schedule}
+                onChange={e => setSchedule(Number(e.target.value))}
+                size="small"
+                InputProps={{ inputProps: { min: 1 } }}
+                fullWidth
+              />
+              <Button
+                variant="outlined"
+                color="warning"
+                fullWidth
+                onClick={async () => {
+                  if (!currentWorkflow || !currentWorkflow.id) {
+                    alert("Please load a workflow to schedule.");
+                    return;
+                  }
+                  const res = await fetch("http://localhost:8000/workflows/schedule", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ workflow_id: currentWorkflow.id, schedule }),
+                  });
+                  const data = await res.json();
+                  alert(data.message);
+                }}
+              >
+                Schedule
+              </Button>
+            </Stack>
           </Box>
         </Stack>
       </Paper>
