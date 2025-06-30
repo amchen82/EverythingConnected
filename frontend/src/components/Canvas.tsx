@@ -79,24 +79,23 @@ useImperativeHandle(ref, () => ({
     edges,
   }),
   loadWorkflow: (workflowData: any) => {
-      const verticalSpacing = 120; // pixels between nodes
+  const verticalSpacing = 120;
   const startX = 300;
   const startY = 100;
-   console.log("[CANVAS] Received workflowData:", workflowData);
-    const newNodes = workflowData.workflow.map((step:any, index:number) => ({
-      id: step.id ||String(index),
-      type: 'default',
-      position: { x: startX, y: startY + index * verticalSpacing },
-
-      data: {
-        label: step.service,
-        type: step.type,
-        action: step.action,
-      },
-    }));
-    setNodes(newNodes);
-    setEdges(workflowData.edges || []); // optionally clear edges
-  },
+  const newNodes = workflowData.workflow.map((step: any, index: number) => ({
+    id: step.id, // <-- Always use the id from backend
+    type: 'default',
+    position: { x: startX, y: startY + index * verticalSpacing },
+    data: {
+      label: step.service,
+      type: step.type,
+      action: step.action,
+      parentId: step.parentId,
+    },
+  }));
+  setNodes(newNodes);
+  setEdges(workflowData.edges || []);
+},
   setOutput,
 }));
 

@@ -1,11 +1,12 @@
 from pydantic import BaseModel
-from typing import List
-from typing import List, Any  # <-- Add Any here
+from typing import List, Optional, Any
 
 class Step(BaseModel):
+    id: str  # <-- Add this line
     type: str  # trigger or action
     service: str
     action: str
+    parentId: Optional[str] = None
 
 class Workflow(BaseModel):
     name: str                   # 🔹 add this line

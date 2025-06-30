@@ -134,3 +134,10 @@ async def websocket_workflow_log(websocket: WebSocket, workflow_id: str):
     finally:
         print(f"[WS] Connection closed for workflow_id: {workflow_id}")
 
+
+@router.delete("/clear_all")
+def clear_all_workflows(db: Session = Depends(get_db)):
+    db.query(WorkflowDB).delete()
+    db.commit()
+    return {"message": "All workflows deleted"}
+
