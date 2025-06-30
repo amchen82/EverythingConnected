@@ -19,11 +19,7 @@ const App = () => {
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <div style={{ position: 'absolute', top: 16, right: 16 }}>
-        <IconButton onClick={() => setMode(mode === 'light' ? 'dark' : 'light')} color="inherit">
-          {mode === 'light' ? <Brightness4Icon /> : <Brightness7Icon />}
-        </IconButton>
-      </div>
+      
       {user ? (
         <>
           <WorkflowBuilder username={user} mode={mode} setMode={setMode} />
