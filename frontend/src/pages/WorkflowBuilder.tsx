@@ -11,6 +11,7 @@ import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
+import { ReactFlowProvider } from 'react-flow-renderer';
 
 const WorkflowBuilder = ({ username, mode, setMode }: { username: string, mode: 'light' | 'dark', setMode: (m: 'light' | 'dark') => void }) => {
   const theme = useTheme(); // <-- ADD THIS
@@ -266,7 +267,9 @@ useEffect(() => {
       </Paper>
       {/* Canvas */}
       <Box flex={1} sx={{ bgcolor: theme.palette.background.default }}>
-        <Canvas ref={canvasRef} currentWorkflowId={currentWorkflowId} mode={mode} />
+        <ReactFlowProvider>
+          <Canvas ref={canvasRef} currentWorkflowId={currentWorkflowId} mode={mode} />
+        </ReactFlowProvider>
       </Box>
     </Box>
   );

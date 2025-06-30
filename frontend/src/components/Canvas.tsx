@@ -14,6 +14,7 @@ import ReactFlow, {
   Background,
   Controls,
   Node,
+  useReactFlow
 } from 'react-flow-renderer';
 import { v4 as uuidv4 } from 'uuid';
 import {
@@ -63,6 +64,7 @@ const [logOutput, setLogOutput] = useState<string[]>([]);
 const [openNodeIds, setOpenNodeIds] = useState<string[]>([]);
 const wsRef = useRef<WebSocket | null>(null);
 const onConnect = useCallback((params:Connection) => setEdges((eds) => addEdge(params, eds)), []);
+const reactFlowInstance = useReactFlow();
 
 
 
@@ -103,10 +105,15 @@ useImperativeHandle(ref, () => ({
     event.preventDefault();
     const type = event.dataTransfer.getData('type');
     if (!type) return;
-    const position = {
-      x: event.clientX - 250, // adjust as needed for your layout
-      y: event.clientY - 50,
-    };
+
+    // Get bounding rect of the React Flow wrapper
+    const reactFlowBounds = event.currentTarget.getBoundingClientRect();
+
+    // Calculate position relative to the canvas and project to flow coordinates
+    const position = reactFlowInstance.project({
+      x: event.clientX - reactFlowBounds.left,
+      y: event.clientY - reactFlowBounds.top,
+    });
 
     const newNode = {
       id: uuidv4(),
