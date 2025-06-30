@@ -465,6 +465,19 @@ useImperativeHandle(ref, () => ({
           <Button onClick={() => setSelectedNode(null)} color="secondary">
             Cancel
           </Button>
+          <Button
+            onClick={() => {
+              if (selectedNode) {
+                setNodes(nds => nds.filter(n => n.id !== selectedNode.id));
+                setEdges(eds => eds.filter(e => e.source !== selectedNode.id && e.target !== selectedNode.id));
+                setSelectedNode(null);
+              }
+            }}
+            color="error"
+            variant="outlined"
+          >
+            Delete
+          </Button>
           <Button type="submit" form="node-edit-form" variant="contained" color="primary">
             Save
           </Button>
@@ -691,6 +704,20 @@ useImperativeHandle(ref, () => ({
                       helperText="Paste your Notion page or database ID here"
                     />
                   )}
+
+                  {/* Delete Button */}
+                  <Button
+                    variant="outlined"
+                    color="error"
+                    onClick={() => {
+                      setNodes(nds => nds.filter(n => n.id !== id));
+                      setEdges(eds => eds.filter(e => e.source !== id && e.target !== id));
+                      setOpenNodeIds(ids => ids.filter(nid => nid !== id));
+                    }}
+                    sx={{ mt: 2 }}
+                  >
+                    Delete
+                  </Button>
                 </Box>
               </Box>
             </Paper>
