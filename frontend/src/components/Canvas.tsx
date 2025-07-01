@@ -532,9 +532,9 @@ useImperativeHandle(ref, () => ({
       <Box
         sx={{
           position: "absolute",
-          top: 0,
-          right: 0,
-          height: "100%",
+          top: 72, // below the icon row (adjust as needed)
+          right: 16,
+          height: "auto",
           display: "flex",
           flexDirection: "column",
           gap: 2,
