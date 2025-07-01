@@ -32,6 +32,7 @@ import {
 } from '@mui/material';
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme } from '@mui/material/styles';
+import MenuItem from '@mui/material/MenuItem';
 
 declare global {
   interface Window {
@@ -280,6 +281,21 @@ useImperativeHandle(ref, () => ({
     setOpenNodeIds(ids => [...ids, newNode.id]);
   };
 
+  const actionOptions: Record<string, string[]> = {
+    gmail: ['new_email', 'send_email'],
+    notion: ['create_page', 'update_page'],
+    youtube: ['upload_video', 'get_comments'],
+    googlesheets: ['add_row', 'read_sheet'],
+    slack: ['send_message', 'read_channel'],
+    facebook: ['post_status', 'get_feed'],
+    yahoofinance: ['get_stock', 'get_news'],
+    openai: ['generate_text', 'summarize'],
+    twilio: ['send_sms', 'make_call'],
+  };
+
+  const selectedService = selectedNode?.data.label || '';
+  const actions = actionOptions[selectedService] || ['default_action'];
+
   // Render node panels as a vertical list on the right
   return (
     <Box sx={{ position: "relative", height: "100%" }}>
@@ -312,14 +328,17 @@ useImperativeHandle(ref, () => ({
             sx={{ display: 'flex', flexDirection: 'column', gap: 2, minWidth: 300 }}
           >
             <TextField
+              select
               label="Type"
               value={selectedNode?.data.type || ''}
               onChange={e => updateSelectedField('type', e.target.value)}
-              placeholder="trigger / action"
               size="small"
               fullWidth
               margin="dense"
-            />
+            >
+              <MenuItem value="trigger">Trigger</MenuItem>
+              <MenuItem value="action">Action</MenuItem>
+            </TextField>
             <TextField
               label="Service"
               value={selectedNode?.data.label || ''}
@@ -330,14 +349,18 @@ useImperativeHandle(ref, () => ({
               margin="dense"
             />
             <TextField
+              select
               label="Action"
               value={selectedNode?.data.action || ''}
               onChange={e => updateSelectedField('action', e.target.value)}
-              placeholder="new_file / create_page"
               size="small"
               fullWidth
               margin="dense"
-            />
+            >
+              {actions.map(action => (
+                <MenuItem key={action} value={action}>{action}</MenuItem>
+              ))}
+            </TextField>
             {selectedNode?.data.type === "trigger" && selectedNode?.data.label === "gmail" && (
               <Box mt={2} p={2} borderRadius={1} bgcolor={gmailUser ? "success.light" : "grey.100"}>
                 <Stack direction="row" alignItems="center" spacing={1}>
