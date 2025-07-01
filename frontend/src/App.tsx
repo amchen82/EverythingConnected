@@ -21,12 +21,23 @@ const App = () => {
       <CssBaseline />
       
       {user ? (
-        <>
-          <WorkflowBuilder username={user} mode={mode} setMode={setMode} />
-          <Button onClick={() => { localStorage.removeItem('user'); setUser(null); }}>
+        <div>
+          {/* Fixed-position Logout button in upper right */}
+          <Button
+            variant="outlined"
+            color="error"
+            onClick={() => { localStorage.removeItem('user'); setUser(null); }}
+            sx={{
+              position: 'fixed',
+              top: 16,
+              right: 200,
+              zIndex: 2000
+            }}
+          >
             Logout
           </Button>
-        </>
+          <WorkflowBuilder username={user} mode={mode} setMode={setMode} />
+        </div>
       ) : (
         <Login
           onLogin={u => {
