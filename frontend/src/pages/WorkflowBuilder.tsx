@@ -12,6 +12,12 @@ import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { ReactFlowProvider } from 'react-flow-renderer';
+import TableChartIcon from '@mui/icons-material/TableChart'; // Google Sheets
+import ChatIcon from '@mui/icons-material/Chat'; // Slack
+import FacebookIcon from '@mui/icons-material/Facebook'; // Facebook
+import AttachMoneyIcon from '@mui/icons-material/AttachMoney'; // Yahoo Finance
+import SmartToyIcon from '@mui/icons-material/SmartToy'; // OpenAI
+import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone'; // Twilio
 
 const WorkflowBuilder = ({ username, mode, setMode }: { username: string, mode: 'light' | 'dark', setMode: (m: 'light' | 'dark') => void }) => {
   const theme = useTheme(); // <-- ADD THIS
@@ -186,6 +192,78 @@ useEffect(() => {
                 }}
               >
                 YouTube
+              </Button>
+              <Button
+                startIcon={<TableChartIcon />}
+                variant="contained"
+                color="success"
+                fullWidth
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'googlesheets');
+                }}
+              >
+                Google Sheets
+              </Button>
+              <Button
+                startIcon={<ChatIcon />}
+                variant="contained"
+                color="info"
+                fullWidth
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'slack');
+                }}
+              >
+                Slack
+              </Button>
+              <Button
+                startIcon={<FacebookIcon />}
+                variant="contained"
+                color="primary"
+                fullWidth
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'facebook');
+                }}
+              >
+                Facebook
+              </Button>
+              <Button
+                startIcon={<AttachMoneyIcon />}
+                variant="contained"
+                color="warning"
+                fullWidth
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'yahoofinance');
+                }}
+              >
+                Yahoo Finance
+              </Button>
+              <Button
+                startIcon={<SmartToyIcon />}
+                variant="contained"
+                color="secondary"
+                fullWidth
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'openai');
+                }}
+              >
+                OpenAI
+              </Button>
+              <Button
+                startIcon={<PhoneIphoneIcon />}
+                variant="contained"
+                color="secondary"
+                fullWidth
+                draggable
+                onDragStart={e => {
+                  e.dataTransfer.setData('type', 'twilio');
+                }}
+              >
+                Twilio
               </Button>
             </Stack>
           </Box>

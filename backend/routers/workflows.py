@@ -141,3 +141,27 @@ def clear_all_workflows(db: Session = Depends(get_db)):
     db.commit()
     return {"message": "All workflows deleted"}
 
+@router.post("/tools/googlesheets")
+def google_sheets_stub():
+    return {"message": "Google Sheets endpoint stub"}
+
+@router.post("/tools/slack")
+def slack_stub():
+    return {"message": "Slack endpoint stub"}
+
+@router.post("/tools/facebook")
+def facebook_stub():
+    return {"message": "Facebook endpoint stub"}
+
+@router.post("/tools/yahoofinance")
+def yahoo_finance_stub():
+    return {"message": "Yahoo Finance endpoint stub"}
+
+@router.post("/tools/openai")
+def openai_stub():
+    return {"message": "OpenAI endpoint stub"}
+
+@router.post("/tools/twilio")
+def twilio_stub():
+    return {"message": "Twilio endpoint stub"}
+
