@@ -1,5 +1,6 @@
 # backend/routers/workflows.py
-from fastapi import APIRouter, HTTPException, Depends, Request, WebSocket
+
+from fastapi import APIRouter, HTTPException, Depends, Request, WebSocket, Body
 from sqlalchemy.orm import Session
 from models.workflow import Workflow
 from models.db import WorkflowDB, UserDB
@@ -8,10 +9,17 @@ from services.gmail import check_new_email
 from services.notion import create_notion_page
 import json
 from tasks import run_workflow_task 
+import openai
 
-from pydantic import BaseModel
+from openai import OpenAI
 import redis
 import asyncio
+
+import os
+
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
+
+from pydantic import BaseModel
 
 r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
 
@@ -79,10 +87,23 @@ def run_workflow(workflow: dict, request: Request):
     workflow_id = workflow.get("id", "default")
     log_to_redis(workflow_id, "------------------------------------------------------")
     log_to_redis(workflow_id, "Workflow started.")
+    log_to_redis(workflow_id, str(workflow.get("workflow", [])))
+
     gmail_token = request.headers.get("x-gmail-token")
     notion_token = request.headers.get("x-notion-token")
     trigger_data = None
-    for step in workflow.get("workflow", []):
+    openai_result = None
+
+    # --- Sort steps: trigger first, then by service ---
+    steps = workflow.get("workflow", [])
+    steps_sorted = sorted(
+        steps,
+        key=lambda s: (0 if s.get("type") == "trigger" else 1, s.get("service", ""))
+    )
+
+
+    for step in steps_sorted:
+        # Gmail trigger
         if step.get("type") == "trigger" and step.get("service") == "gmail":
             log_to_redis(workflow_id, "Checking new email...")
             trigger_data = check_new_email(gmail_token)
@@ -90,21 +111,52 @@ def run_workflow(workflow: dict, request: Request):
             if not trigger_data:
                 log_to_redis(workflow_id, "No new email.")
                 return {"message": "No new email.", "workflow_id": workflow_id}
-            log_to_redis(workflow_id, f"New email: {trigger_data['subject']}")
+            log_to_redis(workflow_id, f"New email: {trigger_data}")
+
+        # Notion action
         elif step.get("type") == "action" and step.get("service") == "notion":
             if trigger_data and notion_token:
                 log_to_redis(workflow_id, "Creating Notion page...")
                 title = trigger_data.get("subject", "New Page")
                 content = trigger_data.get("body", "Created from EverythingConnected")
-                parent_id = step.get("parentId")  # <-- Get parentId from node
+                parent_id = step.get("parentId")
                 result = create_notion_page(notion_token, title=title, content=content, parent_id=parent_id)
                 if result:
                     log_to_redis(workflow_id, "Notion page created.")
                 else:
                     log_to_redis(workflow_id, "Failed to create Notion page.")
+
+        # OpenAI action
+        elif step.get("type") == "action" and step.get("service") == "openai":
+            if trigger_data:
+                log_to_redis(workflow_id, "Calling OpenAI...")
+                prompt = step.get("prompt", "Summarize the following email:")
+                log_to_redis(workflow_id, f"Prompt: {prompt}")
+                email_body = trigger_data
+                # Combine prompt and email body
+                full_prompt = f"{prompt}\n\nEmail Content:\n{email_body}"
+                client = OpenAI(api_key=OPENAI_API_KEY)
+                try:
+                    response = client.chat.completions.create(
+                        model="gpt-4.1-mini",
+                        messages=[{"role": "user", "content": full_prompt}],
+                        temperature=0.6,
+                        max_tokens=300
+                    )
+                    openai_result = response.choices[0].message.content
+                    log_to_redis(workflow_id, f"OpenAI result: {openai_result}")
+                except Exception as e:
+                    log_to_redis(workflow_id, f"OpenAI error: {str(e)}")
+                    openai_result = None
+
     log_to_redis(workflow_id, "Workflow executed.")
-    log_to_redis(workflow_id,"------------------------------------------------------")
-    return {"message": "Workflow executed.", "workflow_id": workflow_id}
+    log_to_redis(workflow_id, "------------------------------------------------------")
+    return {
+        "message": "Workflow executed.",
+        "workflow_id": workflow_id,
+        "openai_result": openai_result,
+        "trigger_data": trigger_data
+    }
 
 @router.delete("/delete/{workflow_id}")
 def delete_workflow(workflow_id: int, db: Session = Depends(get_db)):
@@ -164,4 +216,18 @@ def openai_stub():
 @router.post("/tools/twilio")
 def twilio_stub():
     return {"message": "Twilio endpoint stub"}
+
+@router.post("/tools/openai/generate")
+def openai_generate(prompt: str = Body(...), api_key: str = Body(None)):
+    client = OpenAI(api_key=OPENAI_API_KEY)
+    try:
+        response = client.chat.completions.create(
+            model="gpt-4.1-mini",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=0.6,
+            max_tokens=300
+        )
+        return {"result": response.choices[0].message.content}
+    except Exception as e:
+        return {"error": str(e)}
 

@@ -33,6 +33,7 @@ import {
 import CloseIcon from "@mui/icons-material/Close";
 import { useTheme } from '@mui/material/styles';
 import MenuItem from '@mui/material/MenuItem';
+import OpenAIPromptPanel from './OpenAIPromptPanel';
 
 declare global {
   interface Window {
@@ -482,6 +483,11 @@ useImperativeHandle(ref, () => ({
                 helperText="Paste your Notion page or database ID here"
               />
             )}
+            {selectedNode?.data.label === "openai" && (
+              <Box mt={2} p={2} borderRadius={1} bgcolor="grey.100">
+                <OpenAIPromptPanel node={selectedNode} setNodes={setNodes} />
+              </Box>
+            )}
           </Box>
         </DialogContent>
         <DialogActions>
@@ -726,6 +732,13 @@ useImperativeHandle(ref, () => ({
                       margin="dense"
                       helperText="Paste your Notion page or database ID here"
                     />
+                  )}
+
+                  {/* OpenAI prompt panel */}
+                  {node.data.label === "openai" && (
+                    <Box mt={2} p={2} borderRadius={1} bgcolor="grey.100">
+                      <OpenAIPromptPanel node={node} setNodes={setNodes} />
+                    </Box>
                   )}
 
                   {/* Delete Button */}

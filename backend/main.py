@@ -33,3 +33,4 @@ app.include_router(notion_oauth.router)
 
 GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
 GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
+OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
