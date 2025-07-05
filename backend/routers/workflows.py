@@ -16,12 +16,22 @@ import redis
 import asyncio
 
 import os
+import logging
+import uuid
 
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 from pydantic import BaseModel
 
 r = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+
+# Configure logging once, ideally in main.py
+logging.basicConfig(
+    level=logging.INFO,
+    format='%(asctime)s %(levelname)s %(message)s'
+)
+
+logger = logging.getLogger(__name__)
 
 def log_to_redis(workflow_id, message):
     print(f"[LOG] [{workflow_id}] {message}")  # Debug print
@@ -84,6 +94,7 @@ def save_workflow(workflow: Workflow, db: Session = Depends(get_db)):
 
 @router.post("/run")
 def run_workflow(workflow: dict, request: Request):
+    request_id = str(uuid.uuid4())
     workflow_id = workflow.get("id", "default")
     log_to_redis(workflow_id, "------------------------------------------------------")
     log_to_redis(workflow_id, "Workflow started.")
@@ -102,12 +113,17 @@ def run_workflow(workflow: dict, request: Request):
     )
 
 
-    for step in steps_sorted:
+    for idx, step in enumerate(steps_sorted):
+        step_id = step.get("id", f"step-{idx}")
+        logger.info(
+            f"{request_id} {step_id} Running step: {step.get('service')} ({step.get('type')})"
+           
+        )
         # Gmail trigger
         if step.get("type") == "trigger" and step.get("service") == "gmail":
             log_to_redis(workflow_id, "Checking new email...")
             trigger_data = check_new_email(gmail_token)
-            print(f"[RUN] Trigger data: {trigger_data}")
+            logger.info(f"{request_id} {step_id} [RUN] Trigger data: {trigger_data}")
             if not trigger_data:
                 log_to_redis(workflow_id, "No new email.")
                 return {"message": "No new email.", "workflow_id": workflow_id}
@@ -144,6 +160,9 @@ def run_workflow(workflow: dict, request: Request):
                         max_tokens=300
                     )
                     openai_result = response.choices[0].message.content
+                    logger.info(
+                                f"{request_id} {step_id} OpenAI result: {openai_result}"
+                    )
                     log_to_redis(workflow_id, f"OpenAI result: {openai_result}")
                 except Exception as e:
                     log_to_redis(workflow_id, f"OpenAI error: {str(e)}")

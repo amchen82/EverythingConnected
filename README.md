@@ -8,6 +8,11 @@
 #   add schedule to run button, implement queue
 #   add real db 
 #   add more test cases
+<!-- 4. Security & Configuration
+Secrets Management: Never hardcode secrets. Use environment variables and consider a secrets manager for production.
+OAuth Tokens: Store and refresh OAuth tokens securely, and never expose them to the frontend.
+CORS: Restrict allow_origins to trusted domains in production. -->
+
 
 ---
 
@@ -86,3 +91,5 @@ celery -A celery_app.celery_app worker --loglevel=info --pool=solo
 ## General
 - Updated README with tonight’s changes.
 - Improved error handling and logging for both frontend and backend.
+
+
