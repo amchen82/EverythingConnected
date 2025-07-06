@@ -16,25 +16,26 @@ def register_step(step_type, service):
 
 @register_step("trigger", "gmail")
 def handle_gmail_trigger(step, context, tokens):
-    user = tokens.get("user")  # You must pass the user object in tokens
+    user = tokens.get("user")
     gmail_token = get_valid_gmail_token(user)
     emails = check_new_email(gmail_token)
+    if emails:
+        context["trigger_data"] = emails  # Store the first email in context
     return emails
 
 @register_step("action", "notion")
 def handle_notion_action(step, context, tokens):
     notion_token = tokens.get("notion_token")
-    trigger_data = context.get("trigger_data")
+    trigger_data = context.get("trigger_data")  # Use data from the previous step
     if trigger_data and notion_token:
         title = trigger_data.get("subject", "New Page")
         content = trigger_data.get("body", "Created from EverythingConnected")
         parent_id = step.get("parentId")
         return create_notion_page(notion_token, title=title, content=content, parent_id=parent_id)
-    return None
 
 @register_step("action", "openai")
 def handle_openai_action(step, context, tokens):
-    trigger_data = context.get("trigger_data")
+    trigger_data = context.get("trigger_data")  # Use data from the Gmail step
     if trigger_data:
         prompt = step.get("prompt", "Summarize the following email:")
         email_body = trigger_data

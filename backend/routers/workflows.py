@@ -106,9 +106,7 @@ def run_workflow(workflow: dict, request: Request, db: Session = Depends(get_db)
 
     gmail_token = request.headers.get("x-gmail-token")
     notion_token = request.headers.get("x-notion-token")
-    trigger_data = None
-    openai_result = None
-    context = {}
+    context = {}  # Initialize the mutable context dictionary
 
     # Fetch user from workflow['owner'] or session
     username = workflow.get("owner")
@@ -117,43 +115,36 @@ def run_workflow(workflow: dict, request: Request, db: Session = Depends(get_db)
     tokens = {
         "gmail_token": gmail_token,
         "notion_token": notion_token,
-        "user": user,  # <-- Add user object here
+        "user": user,  # Pass the user object
     }
 
-    # --- Sort steps: trigger first, then by service ---
+    # Sort steps: trigger first, then by service
     steps = workflow.get("workflow", [])
     steps_sorted = sorted(
         steps,
         key=lambda s: (0 if s.get("type") == "trigger" else 1, s.get("service", ""))
     )
 
-
     for idx, step in enumerate(steps_sorted):
         step_id = step.get("id", f"step-{idx}")
         handler = STEP_REGISTRY.get((step.get("type"), step.get("service")))
         if handler:
-            logger.info(f"{request_id} {step_id} Running step: {step.get('service')} ({step.get('type')})")
-            result = handler(step, context, tokens)
-            # Store result in context for next step
-            if step.get("type") == "trigger":
-                context["trigger_data"] = result
-            elif step.get("service") == "openai":
-                context["openai_result"] = result
-            log_to_redis(workflow_id, f"{step.get('service')} result: {result}")
-        else:
-            logger.info(f"{request_id} {step_id} No handler for step: {step.get('service')} ({step.get('type')})")
-            log_to_redis(workflow_id, f"No handler for step: {step.get('service')} ({step.get('type')})")
-
-    trigger_data = context.get("trigger_data")
-    openai_result = context.get("openai_result")
+            try:
+                result = handler(step, context, tokens)  # Pass context to each step
+                if result:
+                    context[f"{step.get('service')}_result"] = result  # Store step output in context
+                log_to_redis(workflow_id, f"Step {step_id} completed.")
+                log_to_redis(workflow_id, str(result))
+            except Exception as e:
+                log_to_redis(workflow_id, f"Error in step {step_id}: {str(e)}")
+                return {"error": f"Step {step_id} failed: {str(e)}"}
 
     log_to_redis(workflow_id, "Workflow executed.")
     log_to_redis(workflow_id, "------------------------------------------------------")
     return {
         "message": "Workflow executed.",
         "workflow_id": workflow_id,
-        "openai_result": openai_result,
-        "trigger_data": trigger_data
+        "context": context,  # Return the final context
     }
 
 @router.delete("/delete/{workflow_id}")

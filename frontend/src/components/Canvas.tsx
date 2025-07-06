@@ -488,12 +488,27 @@ const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
           maxHeight: 300, // Set a maximum height for the panel
           overflow: 'auto', // Enable scrolling when content exceeds maxHeight
           boxShadow: 1,
+          position: 'relative', // To position the clear button
         }}
       >
         <Typography variant="subtitle2" gutterBottom>Output:</Typography>
         <Box sx={{ whiteSpace: 'pre-wrap' }}>
           {logOutput.length ? logOutput.join('\n') : "No output yet."}
         </Box>
+        {/* Clear Output Button */}
+        <Button
+          variant="outlined"
+          color="error"
+          size="small"
+          sx={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+          }}
+          onClick={() => setLogOutput([])} // Clear the logOutput state
+        >
+          Clear Output
+        </Button>
       </Paper>
 
       {/* Right sidebar for node panels */}
