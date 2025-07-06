@@ -35,6 +35,8 @@ import { useTheme } from '@mui/material/styles';
 import MenuItem from '@mui/material/MenuItem';
 import OpenAIPromptPanel from './OpenAIPromptPanel';
 
+import { MarkerType } from 'reactflow';
+
 declare global {
   interface Window {
     google: any;
@@ -106,16 +108,21 @@ const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
   const [logOutput, setLogOutput] = useState<string[]>([]);
   const [openNodeIds, setOpenNodeIds] = useState<string[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
-  const onConnect = useCallback((params: Connection) => setEdges((eds) => {
-    // Check if the edge already exists
-    const edgeExists = eds.some(
-      (e) => e.source === params.source && e.target === params.target
-    );
-    if (!edgeExists) {
-      return addEdge(params, eds); // Add the new edge
-    }
-    return eds; // Keep existing edges unchanged
-  }), []);
+  const onConnect = useCallback((params: Connection) => {
+    setEdges((eds) => {
+      // Check if the edge already exists
+      const edgeExists = eds.some(
+        (e) => e.source === params.source && e.target === params.target
+      );
+      if (!edgeExists) {
+        return addEdge(
+          { ...params, markerEnd: { type: MarkerType.ArrowClosed } },// Use 'arrowclosed' for the marker type
+          eds
+        );
+      }
+      return eds; // Keep existing edges unchanged
+    });
+  }, []);
   const reactFlowInstance = useReactFlow();
   const [codeClient, setCodeClient] = useState<any>(null);
   const [gmailUser, setGmailUser] = useState<string | null>(null);
@@ -711,4 +718,9 @@ const handleGmailSignOut = () => {
       });
     }
   }
+};
+
+const edgeOptions = {
+  style: { stroke: '#000', strokeWidth: 2 }, // Customize edge appearance
+  markerEnd: { type: 'arrowclosed' }, // Use 'arrowclosed' for a closed arrow marker
 };
