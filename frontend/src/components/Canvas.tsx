@@ -555,7 +555,7 @@ const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
             >
               <Box sx={{ p: 2 }}>
                 <Box display="flex" alignItems="center" justifyContent="space-between">
-                  <Typography variant="h6">Edit Node: {node.data.label}</Typography>
+                  <Typography variant="h6">{node.data.label}</Typography>
                   <IconButton size="small" onClick={() => setOpenNodeIds(ids => ids.filter(nid => nid !== id))}>
                     <CloseIcon />
                   </IconButton>
