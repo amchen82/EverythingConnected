@@ -1,7 +1,13 @@
 # backend/services/gmail.py
+import os
 import requests
 import base64
-import datetime
+from requests_oauthlib import OAuth2Session
+from models.db import UserDB
+from datetime import datetime, timedelta
+
+GOOGLE_CLIENT_ID = os.environ.get("GOOGLE_OAUTH_CLIENT_ID")
+GOOGLE_CLIENT_SECRET = os.environ.get("GOOGLE_OAUTH_CLIENT_SECRET")
 
 def check_new_email(token=None):
     if token:
@@ -56,7 +62,7 @@ def check_new_email(token=None):
             internal_date = msg_detail.json().get("internalDate")
             if internal_date:
                 # Convert from ms to seconds, then to datetime
-                dt = datetime.datetime.fromtimestamp(int(internal_date) / 1000)
+                dt = datetime.fromtimestamp(int(internal_date) / 1000)
                 date_str = dt.isoformat()
             else:
                 date_str = None
@@ -79,3 +85,27 @@ def check_new_email(token=None):
         }
         for i in range(10)
     ]
+
+def get_valid_gmail_token(user: UserDB):
+    # Check expiry
+    if user.gmail_token_expiry < datetime.utcnow():
+        # Refresh token
+        extra = {
+            'client_id': GOOGLE_CLIENT_ID,
+            'client_secret': GOOGLE_CLIENT_SECRET,
+        }
+        oauth = OAuth2Session(GOOGLE_CLIENT_ID, token={
+            'refresh_token': user.gmail_refresh_token,
+            'token_type': 'Bearer',
+            'expires_in': -30,  # force refresh
+        })
+        token = oauth.refresh_token(
+            'https://oauth2.googleapis.com/token',
+            refresh_token=user.gmail_refresh_token,
+            **extra
+        )
+        # Update DB
+        user.gmail_access_token = token['access_token']
+        user.gmail_token_expiry = datetime.utcnow() + timedelta(seconds=token['expires_in'])
+        # Save user to DB here
+    return user.gmail_access_token

@@ -55,53 +55,95 @@ interface CanvasProps {
   mode?: 'light' | 'dark';
 }
 
+// +++ 1. Create the reusable GmailAuthPanel component +++
+const GmailAuthPanel = ({ gmailUser, codeClient, onSignOut }: { gmailUser: string | null, codeClient: any, onSignOut: () => void }) => (
+  <Box mt={2} p={2} borderRadius={1} bgcolor={gmailUser ? "success.light" : "grey.100"}>
+    <Stack direction="row" alignItems="center" spacing={1}>
+      <Box
+        sx={{
+          width: 10,
+          height: 10,
+          borderRadius: '50%',
+          bgcolor: gmailUser ? "success.main" : "grey.400"
+        }}
+      />
+      <Typography variant="body2">
+        {gmailUser
+          ? <>Logged in as <b>{gmailUser}</b></>
+          : "Not connected to Gmail"}
+      </Typography>
+      {gmailUser && (
+        <Button
+          size="small"
+          color="error"
+          variant="outlined"
+          sx={{ ml: 2 }}
+          onClick={onSignOut}
+        >
+          Sign out
+        </Button>
+      )}
+    </Stack>
+    {!gmailUser && codeClient && (
+      <Button
+        variant="contained"
+        color="primary"
+        onClick={() => codeClient.requestCode()}
+      >
+        Connect Gmail
+      </Button>
+    )}
+  </Box>
+);
+
 const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
   const theme = useTheme();
 
-const [nodes, setNodes, onNodesChange] = useNodesState([]);
-const [edges, setEdges, onEdgesChange] = useEdgesState([]);
-const [selectedNode, setSelectedNode] = useState<Node | null>(null);
-const [output, setOutput] = useState<string>("");
-const [logOutput, setLogOutput] = useState<string[]>([]);
-const [openNodeIds, setOpenNodeIds] = useState<string[]>([]);
-const wsRef = useRef<WebSocket | null>(null);
-const onConnect = useCallback((params:Connection) => setEdges((eds) => addEdge(params, eds)), []);
-const reactFlowInstance = useReactFlow();
+  const [nodes, setNodes, onNodesChange] = useNodesState([]);
+  const [edges, setEdges, onEdgesChange] = useEdgesState([]);
+  const [selectedNode, setSelectedNode] = useState<Node | null>(null);
+  const [output, setOutput] = useState<string>("");
+  const [logOutput, setLogOutput] = useState<string[]>([]);
+  const [openNodeIds, setOpenNodeIds] = useState<string[]>([]);
+  const wsRef = useRef<WebSocket | null>(null);
+  const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), []);
+  const reactFlowInstance = useReactFlow();
+  const [codeClient, setCodeClient] = useState<any>(null);
+  const [gmailUser, setGmailUser] = useState<string | null>(null);
+  const [notionUser, setNotionUser] = useState<string | null>(null);
 
-
-
-useImperativeHandle(ref, () => ({
-  getWorkflowJson: (name: string) => ({
-    name,
-    workflow: nodes.map((n) => ({
-      id: n.id,
-      type: n.data.type,
-      service: n.data.label,
-      action: n.data.action,
-      parentId: n.data.parentId, // <-- Add this line
-    })),
-    edges,
-  }),
-  loadWorkflow: (workflowData: any) => {
-  const verticalSpacing = 120;
-  const startX = 300;
-  const startY = 100;
-  const newNodes = workflowData.workflow.map((step: any, index: number) => ({
-    id: step.id, // <-- Always use the id from backend
-    type: 'default',
-    position: { x: startX, y: startY + index * verticalSpacing },
-    data: {
-      label: step.service,
-      type: step.type,
-      action: step.action,
-      parentId: step.parentId,
+  useImperativeHandle(ref, () => ({
+    getWorkflowJson: (name: string) => ({
+      name,
+      workflow: nodes.map((n) => ({
+        id: n.id,
+        type: n.data.type,
+        service: n.data.label,
+        action: n.data.action,
+        parentId: n.data.parentId,
+      })),
+      edges,
+    }),
+    loadWorkflow: (workflowData: any) => {
+      const verticalSpacing = 120;
+      const startX = 300;
+      const startY = 100;
+      const newNodes = workflowData.workflow.map((step: any, index: number) => ({
+        id: step.id,
+        type: 'default',
+        position: { x: startX, y: startY + index * verticalSpacing },
+        data: {
+          label: step.service,
+          type: step.type,
+          action: step.action,
+          parentId: step.parentId,
+        },
+      }));
+      setNodes(newNodes);
+      setEdges(workflowData.edges || []);
     },
+    setOutput,
   }));
-  setNodes(newNodes);
-  setEdges(workflowData.edges || []);
-},
-  setOutput,
-}));
 
   const onDrop = (event: React.DragEvent) => {
     event.preventDefault();
@@ -179,8 +221,6 @@ useImperativeHandle(ref, () => ({
   }, [selectedNode, setNodes, setEdges]);
 
   const googleButtonRef = useRef<HTMLDivElement>(null);
-  const [gmailUser, setGmailUser] = useState<string | null>(null);
-  const [notionUser, setNotionUser] = useState<string | null>(null);
 
   useEffect(() => {
     // On mount, check if already connected
@@ -191,52 +231,29 @@ useImperativeHandle(ref, () => ({
     }
   }, []);
 
+  // Add this useEffect to init your OAuth2 Code Client once:
   useEffect(() => {
-    if (
-      selectedNode &&
-      selectedNode.data.type === "trigger" &&
-      selectedNode.data.label === "gmail" &&
-      window.google &&
-      googleButtonRef.current &&
-      !gmailUser // Only show button if not connected
-    ) {
-      // Render the Google Sign-In button
-      window.google.accounts.id.renderButton(googleButtonRef.current, {
-        theme: "outline",
-        size: "large",
-        text: "signin_with",
-      });
-
-      // Set up the OAuth2 token client
-      const tokenClient = window.google.accounts.oauth2.initTokenClient({
+    if (window.google && !codeClient) {
+      const client = window.google.accounts.oauth2.initCodeClient({
         client_id: "600728715852-5grvn63j2hhnir4448fcbgeoa2t92bre.apps.googleusercontent.com",
-        scope: 'https://www.googleapis.com/auth/gmail.readonly',
-        callback: async (response: any) => {
-          localStorage.setItem("gmail_token", response.access_token);
-
-          // Fetch user info using the access token
-          try {
-            const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-              headers: {
-                Authorization: `Bearer ${response.access_token}`,
-              },
-            });
-            const userInfo = await userInfoRes.json();
-            setGmailUser(userInfo.email || userInfo.name || null);
-          } catch (err) {
-            setGmailUser("Connected");
-          }
+        scope: "https://www.googleapis.com/auth/gmail.readonly",
+        ux_mode: "popup",
+        access_type: "offline",  // request refresh token
+        prompt: "consent",       // force consent screen
+        callback: async (resp: any) => {
+          const user = sessionStorage.getItem("user");
+          const res = await fetch("http://localhost:8000/workflows/exchange_gmail_code", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ username: user, code: resp.code }),
+          });
+          const data = await res.json();
+          setGmailUser(data.email || data.name || "Connected");
         },
       });
-
-      // Attach click handler to the rendered button
-      if (googleButtonRef.current) {
-        googleButtonRef.current.onclick = () => {
-          tokenClient.requestAccessToken();
-        };
-      }
+      setCodeClient(client);
     }
-  }, [selectedNode, gmailUser]);
+  }, [codeClient]);
 
   // Subscribe to logs when a workflow is run
   useEffect(() => {
@@ -363,68 +380,11 @@ useImperativeHandle(ref, () => ({
               ))}
             </TextField>
             {selectedNode?.data.type === "trigger" && selectedNode?.data.label === "gmail" && (
-              <Box mt={2} p={2} borderRadius={1} bgcolor={gmailUser ? "success.light" : "grey.100"}>
-                <Stack direction="row" alignItems="center" spacing={1}>
-                  <Box
-                    sx={{
-                      width: 10,
-                      height: 10,
-                      borderRadius: '50%',
-                      bgcolor: gmailUser ? "success.main" : "grey.400"
-                    }}
-                  />
-                  <Typography variant="body2">
-                    {gmailUser
-                      ? <>Logged in as <b>{gmailUser}</b></>
-                      : "Not connected to Gmail"}
-                  </Typography>
-                  {gmailUser && (
-                    <Button
-                      size="small"
-                      color="error"
-                      variant="outlined"
-                      sx={{ ml: 2 }}
-                      onClick={() => {
-                        localStorage.removeItem("gmail_token");
-                        setGmailUser(null);
-                      }}
-                    >
-                      Sign out
-                    </Button>
-                  )}
-                </Stack>
-                {!gmailUser && (
-                  <Button
-                    variant="contained"
-                    color="primary"
-                    onClick={() => {
-                      if (window.google) {
-                        const tokenClient = window.google.accounts.oauth2.initTokenClient({
-                          client_id: "600728715852-5grvn63j2hhnir4448fcbgeoa2t92bre.apps.googleusercontent.com",
-                          scope: 'https://www.googleapis.com/auth/gmail.readonly',
-                          callback: async (response: any) => {
-                            localStorage.setItem("gmail_token", response.access_token);
-                            try {
-                              const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-                                headers: {
-                                  Authorization: `Bearer ${response.access_token}`,
-                                },
-                              });
-                              const userInfo = await userInfoRes.json();
-                              setGmailUser(userInfo.email || userInfo.name || null);
-                            } catch (err) {
-                              setGmailUser("Connected");
-                            }
-                          },
-                        });
-                        tokenClient.requestAccessToken();
-                      }
-                    }}
-                  >
-                    Connect Gmail
-                  </Button>
-                )}
-              </Box>
+              <GmailAuthPanel
+                gmailUser={gmailUser}
+                codeClient={codeClient}
+                onSignOut={handleGmailSignOut}
+              />
             )}
             {selectedNode?.data.type === "action" && selectedNode?.data.label === "notion" && (
               <Box mt={2} p={2} borderRadius={1} bgcolor={notionUser ? "success.light" : "grey.100"}>
@@ -525,6 +485,8 @@ useImperativeHandle(ref, () => ({
           fontSize: '1rem',
           color: theme.palette.text.primary,
           minHeight: 100,
+          maxHeight: 300, // Set a maximum height for the panel
+          overflow: 'auto', // Enable scrolling when content exceeds maxHeight
           boxShadow: 1,
         }}
       >
@@ -610,68 +572,11 @@ useImperativeHandle(ref, () => ({
 
                   {/* Gmail trigger fields */}
                   {node.data.type === "trigger" && node.data.label === "gmail" && (
-                    <Box mt={2} p={2} borderRadius={1} bgcolor={gmailUser ? "success.light" : "grey.100"}>
-                      <Stack direction="row" alignItems="center" spacing={1}>
-                        <Box
-                          sx={{
-                            width: 10,
-                            height: 10,
-                            borderRadius: '50%',
-                            bgcolor: gmailUser ? "success.main" : "grey.400"
-                          }}
-                        />
-                        <Typography variant="body2">
-                          {gmailUser
-                            ? <>Logged in as <b>{gmailUser}</b></>
-                            : "Not connected to Gmail"}
-                        </Typography>
-                        {gmailUser && (
-                          <Button
-                            size="small"
-                            color="error"
-                            variant="outlined"
-                            sx={{ ml: 2 }}
-                            onClick={() => {
-                              localStorage.removeItem("gmail_token");
-                              setGmailUser(null);
-                            }}
-                          >
-                            Sign out
-                          </Button>
-                        )}
-                      </Stack>
-                      {!gmailUser && (
-                        <Button
-                          variant="contained"
-                          color="primary"
-                          onClick={() => {
-                            if (window.google) {
-                              const tokenClient = window.google.accounts.oauth2.initTokenClient({
-                                client_id: "600728715852-5grvn63j2hhnir4448fcbgeoa2t92bre.apps.googleusercontent.com",
-                                scope: 'https://www.googleapis.com/auth/gmail.readonly',
-                                callback: async (response: any) => {
-                                  localStorage.setItem("gmail_token", response.access_token);
-                                  try {
-                                    const userInfoRes = await fetch("https://www.googleapis.com/oauth2/v3/userinfo", {
-                                      headers: {
-                                        Authorization: `Bearer ${response.access_token}`,
-                                      },
-                                    });
-                                    const userInfo = await userInfoRes.json();
-                                    setGmailUser(userInfo.email || userInfo.name || null);
-                                  } catch (err) {
-                                    setGmailUser("Connected");
-                                  }
-                                },
-                              });
-                              tokenClient.requestAccessToken();
-                            }
-                          }}
-                        >
-                          Connect Gmail
-                        </Button>
-                      )}
-                    </Box>
+                    <GmailAuthPanel
+                      gmailUser={gmailUser}
+                      codeClient={codeClient}
+                      onSignOut={handleGmailSignOut}
+                    />
                   )}
 
                   {/* Notion action fields */}
@@ -765,3 +670,18 @@ useImperativeHandle(ref, () => ({
 });
 
 export default Canvas;
+
+// Add the handleGmailSignOut function
+const handleGmailSignOut = () => {
+  localStorage.removeItem("gmail_token"); // Remove the Gmail token from localStorage
+  // setGmailUser(null); // Update the state to reflect that the user is signed out
+  // Optionally, revoke the token using Google's OAuth2 revoke method
+  if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+    const token = localStorage.getItem("gmail_token");
+    if (token) {
+      window.google.accounts.oauth2.revoke(token, () => {
+        console.log("Gmail token revoked");
+      });
+    }
+  }
+};

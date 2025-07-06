@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, ForeignKey
+from sqlalchemy import Column, Integer, String, Text, ForeignKey, DateTime
 from sqlalchemy.orm import declarative_base, relationship
 
 
@@ -9,8 +9,11 @@ Base = declarative_base()
 class UserDB(Base):
     __tablename__ = "users"
     id = Column(Integer, primary_key=True)
-    username = Column(String, unique=True, index=True)
+    username = Column(String, unique=True)
     password = Column(String)
+    gmail_access_token = Column(String)
+    gmail_refresh_token = Column(String)
+    gmail_token_expiry = Column(DateTime)
 
     workflows = relationship("WorkflowDB", back_populates="owner")
 

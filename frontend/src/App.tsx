@@ -12,7 +12,7 @@ const App = () => {
 
   // Auto-login if user is in localStorage
   useEffect(() => {
-    const savedUser = localStorage.getItem('user');
+    const savedUser = sessionStorage.getItem('user');
     if (savedUser) setUser(savedUser);
   }, []);
 
@@ -26,7 +26,7 @@ const App = () => {
           <Button
             variant="outlined"
             color="error"
-            onClick={() => { localStorage.removeItem('user'); setUser(null); }}
+            onClick={() => { sessionStorage.removeItem('user'); setUser(null); }}
             sx={{
               position: 'fixed',
               top: 16,
@@ -41,7 +41,7 @@ const App = () => {
       ) : (
         <Login
           onLogin={u => {
-            localStorage.setItem('user', u);
+            sessionStorage.setItem('user', u);
             setUser(u);
           }}
           mode={mode}

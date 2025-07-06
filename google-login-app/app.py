@@ -27,7 +27,9 @@ google_bp = make_google_blueprint(
        
     "https://www.googleapis.com/auth/calendar"
     ],
-    redirect_url="/welcome"
+    redirect_url="/welcome",
+    offline=True,  # Ensures access_type=offline
+    reprompt_consent=True  # Ensures prompt=consent
 )
 app.register_blueprint(google_bp, url_prefix="/login")
 

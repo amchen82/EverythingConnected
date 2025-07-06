@@ -1,4 +1,5 @@
-from services.gmail import check_new_email
+from models.db import UserDB
+from services.gmail import check_new_email, get_valid_gmail_token
 from services.notion import create_notion_page
 from openai import OpenAI
 import os
@@ -15,7 +16,8 @@ def register_step(step_type, service):
 
 @register_step("trigger", "gmail")
 def handle_gmail_trigger(step, context, tokens):
-    gmail_token = tokens.get("gmail_token")
+    user = tokens.get("user")  # You must pass the user object in tokens
+    gmail_token = get_valid_gmail_token(user)
     emails = check_new_email(gmail_token)
     return emails
 

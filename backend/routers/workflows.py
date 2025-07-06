@@ -14,10 +14,12 @@ import openai
 from openai import OpenAI
 import redis
 import asyncio
+import requests
 
 import os
 import logging
 import uuid
+from datetime import datetime, timedelta
 
 from services.step_registry import STEP_REGISTRY
 
@@ -95,7 +97,7 @@ def save_workflow(workflow: Workflow, db: Session = Depends(get_db)):
     return {"message": "Workflow saved"}
 
 @router.post("/run")
-def run_workflow(workflow: dict, request: Request):
+def run_workflow(workflow: dict, request: Request, db: Session = Depends(get_db)):
     request_id = str(uuid.uuid4())
     workflow_id = workflow.get("id", "default")
     log_to_redis(workflow_id, "------------------------------------------------------")
@@ -106,12 +108,16 @@ def run_workflow(workflow: dict, request: Request):
     notion_token = request.headers.get("x-notion-token")
     trigger_data = None
     openai_result = None
-    context = {}  # Initialize context
+    context = {}
 
-    # Add this:
+    # Fetch user from workflow['owner'] or session
+    username = workflow.get("owner")
+    user = db.query(UserDB).filter_by(username=username).first() if username else None
+
     tokens = {
         "gmail_token": gmail_token,
         "notion_token": notion_token,
+        "user": user,  # <-- Add user object here
     }
 
     # --- Sort steps: trigger first, then by service ---
@@ -222,4 +228,64 @@ def openai_generate(prompt: str = Body(...), api_key: str = Body(None)):
         return {"result": response.choices[0].message.content}
     except Exception as e:
         return {"error": str(e)}
+
+@router.post("/save_gmail_token")
+def save_gmail_token(data: dict, db: Session = Depends(get_db)):
+    username = data.get("username")
+    access_token = data.get("gmail_access_token")
+    refresh_token = data.get("gmail_refresh_token")
+    token_expiry = data.get("gmail_token_expiry")
+    if not username or not access_token:
+        return {"error": "Missing username or gmail_access_token"}
+    user = db.query(UserDB).filter_by(username=username).first()
+    if not user:
+        return {"error": "User not found"}
+    user.gmail_access_token = access_token
+    if refresh_token:
+        user.gmail_refresh_token = refresh_token
+    if token_expiry:
+        # Convert ms timestamp to datetime
+        user.gmail_token_expiry = datetime.fromtimestamp(int(token_expiry) / 1000)
+    db.commit()
+    return {"message": "Gmail token info saved"}
+
+@router.post("/exchange_gmail_code")
+def exchange_gmail_code(data: dict, db: Session = Depends(get_db)):
+   
+ 
+
+    logger.info("Received request to exchange Gmail code")
+    code = data.get("code")
+    username = data.get("username")
+    if not code or not username:
+        logger.warning("Missing code or username")
+        return {"error": "Missing code or username"}
+    user = db.query(UserDB).filter_by(username=username).first()
+    if not user:
+        return {"error": "User not found"}
+
+    # Exchange code for tokens
+    token_url = "https://oauth2.googleapis.com/token"
+    payload = {
+        "client_id": os.environ["GOOGLE_OAUTH_CLIENT_ID"],
+        "client_secret": os.environ["GOOGLE_OAUTH_CLIENT_SECRET"],
+        "code": code,
+        "grant_type": "authorization_code",
+        "redirect_uri": "postmessage",  # for popup/SPA, use "postmessage"
+    }
+    resp = requests.post(token_url, data=payload)
+    if resp.status_code != 200:
+        return {"error": "Failed to exchange code", "details": resp.text}
+    tokens = resp.json()
+    user.gmail_access_token = tokens.get("access_token")
+    user.gmail_refresh_token = tokens.get("refresh_token")
+    expires_in = tokens.get("expires_in")
+    if expires_in:
+        user.gmail_token_expiry = datetime.utcnow() + timedelta(seconds=expires_in)
+    db.commit()
+    return {
+        "gmail_access_token": user.gmail_access_token,
+        "gmail_refresh_token": user.gmail_refresh_token,
+        "gmail_token_expiry": user.gmail_token_expiry.isoformat() if user.gmail_token_expiry else None,
+    }
 

@@ -33,7 +33,7 @@ const Login = ({
 
     const data = await res.json();
     if (res.ok) {
-      localStorage.setItem('user', data.token); // Save user
+      sessionStorage.setItem('user', data.token); // Save user
       onLogin(data.token);
     } else {
       alert(data.detail || `❌ ${mode} failed`);
