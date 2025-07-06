@@ -19,6 +19,8 @@ import os
 import logging
 import uuid
 
+from services.step_registry import STEP_REGISTRY
+
 OPENAI_API_KEY = os.environ.get("OPENAI_API_KEY")
 
 from pydantic import BaseModel
@@ -104,6 +106,13 @@ def run_workflow(workflow: dict, request: Request):
     notion_token = request.headers.get("x-notion-token")
     trigger_data = None
     openai_result = None
+    context = {}  # Initialize context
+
+    # Add this:
+    tokens = {
+        "gmail_token": gmail_token,
+        "notion_token": notion_token,
+    }
 
     # --- Sort steps: trigger first, then by service ---
     steps = workflow.get("workflow", [])
@@ -115,58 +124,22 @@ def run_workflow(workflow: dict, request: Request):
 
     for idx, step in enumerate(steps_sorted):
         step_id = step.get("id", f"step-{idx}")
-        logger.info(
-            f"{request_id} {step_id} Running step: {step.get('service')} ({step.get('type')})"
-           
-        )
-        # Gmail trigger
-        if step.get("type") == "trigger" and step.get("service") == "gmail":
-            log_to_redis(workflow_id, "Checking new email...")
-            trigger_data = check_new_email(gmail_token)
-            logger.info(f"{request_id} {step_id} [RUN] Trigger data: {trigger_data}")
-            if not trigger_data:
-                log_to_redis(workflow_id, "No new email.")
-                return {"message": "No new email.", "workflow_id": workflow_id}
-            log_to_redis(workflow_id, f"New email: {trigger_data}")
+        handler = STEP_REGISTRY.get((step.get("type"), step.get("service")))
+        if handler:
+            logger.info(f"{request_id} {step_id} Running step: {step.get('service')} ({step.get('type')})")
+            result = handler(step, context, tokens)
+            # Store result in context for next step
+            if step.get("type") == "trigger":
+                context["trigger_data"] = result
+            elif step.get("service") == "openai":
+                context["openai_result"] = result
+            log_to_redis(workflow_id, f"{step.get('service')} result: {result}")
+        else:
+            logger.info(f"{request_id} {step_id} No handler for step: {step.get('service')} ({step.get('type')})")
+            log_to_redis(workflow_id, f"No handler for step: {step.get('service')} ({step.get('type')})")
 
-        # Notion action
-        elif step.get("type") == "action" and step.get("service") == "notion":
-            if trigger_data and notion_token:
-                log_to_redis(workflow_id, "Creating Notion page...")
-                title = trigger_data.get("subject", "New Page")
-                content = trigger_data.get("body", "Created from EverythingConnected")
-                parent_id = step.get("parentId")
-                result = create_notion_page(notion_token, title=title, content=content, parent_id=parent_id)
-                if result:
-                    log_to_redis(workflow_id, "Notion page created.")
-                else:
-                    log_to_redis(workflow_id, "Failed to create Notion page.")
-
-        # OpenAI action
-        elif step.get("type") == "action" and step.get("service") == "openai":
-            if trigger_data:
-                log_to_redis(workflow_id, "Calling OpenAI...")
-                prompt = step.get("prompt", "Summarize the following email:")
-                log_to_redis(workflow_id, f"Prompt: {prompt}")
-                email_body = trigger_data
-                # Combine prompt and email body
-                full_prompt = f"{prompt}\n\nEmail Content:\n{email_body}"
-                client = OpenAI(api_key=OPENAI_API_KEY)
-                try:
-                    response = client.chat.completions.create(
-                        model="gpt-4.1-mini",
-                        messages=[{"role": "user", "content": full_prompt}],
-                        temperature=0.6,
-                        max_tokens=300
-                    )
-                    openai_result = response.choices[0].message.content
-                    logger.info(
-                                f"{request_id} {step_id} OpenAI result: {openai_result}"
-                    )
-                    log_to_redis(workflow_id, f"OpenAI result: {openai_result}")
-                except Exception as e:
-                    log_to_redis(workflow_id, f"OpenAI error: {str(e)}")
-                    openai_result = None
+    trigger_data = context.get("trigger_data")
+    openai_result = context.get("openai_result")
 
     log_to_redis(workflow_id, "Workflow executed.")
     log_to_redis(workflow_id, "------------------------------------------------------")
