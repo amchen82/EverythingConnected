@@ -106,7 +106,16 @@ const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
   const [logOutput, setLogOutput] = useState<string[]>([]);
   const [openNodeIds, setOpenNodeIds] = useState<string[]>([]);
   const wsRef = useRef<WebSocket | null>(null);
-  const onConnect = useCallback((params: Connection) => setEdges((eds) => addEdge(params, eds)), []);
+  const onConnect = useCallback((params: Connection) => setEdges((eds) => {
+    // Check if the edge already exists
+    const edgeExists = eds.some(
+      (e) => e.source === params.source && e.target === params.target
+    );
+    if (!edgeExists) {
+      return addEdge(params, eds); // Add the new edge
+    }
+    return eds; // Keep existing edges unchanged
+  }), []);
   const reactFlowInstance = useReactFlow();
   const [codeClient, setCodeClient] = useState<any>(null);
   const [gmailUser, setGmailUser] = useState<string | null>(null);
@@ -122,7 +131,10 @@ const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
         action: n.data.action,
         parentId: n.data.parentId,
       })),
-      edges,
+      edges: edges.map((e) => ({
+        source: e.source,
+        target: e.target,
+      })), // Include all edges
     }),
     loadWorkflow: (workflowData: any) => {
       const verticalSpacing = 120;

@@ -28,10 +28,10 @@ def handle_notion_action(step, context, tokens):
     notion_token = tokens.get("notion_token")
     trigger_data = context.get("trigger_data")  # Use data from the previous step
     if trigger_data and notion_token:
-        title = trigger_data.get("subject", "New Page")
-        content = trigger_data.get("body", "Created from EverythingConnected")
-        parent_id = step.get("parentId")
-        return create_notion_page(notion_token, title=title, content=content, parent_id=parent_id)
+        title = "new page"
+        content =  "Created from EverythingConnected"
+        # parent_id = step.get("parentId", "Try-AI-Meeting-Notes-21fa46cfaac28026912dc2e6a0539ea5")
+        return create_notion_page(notion_token, title=title, content=content, parent_id="Try-AI-Meeting-Notes-21fa46cfaac28026912dc2e6a0539ea5")
 
 @register_step("action", "openai")
 def handle_openai_action(step, context, tokens):

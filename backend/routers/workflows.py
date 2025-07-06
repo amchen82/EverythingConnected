@@ -116,23 +116,54 @@ def run_workflow(workflow: dict, request: Request, db: Session = Depends(get_db)
         "gmail_token": gmail_token,
         "notion_token": notion_token,
         "user": user,  # Pass the user object
-    }
-
-    # Sort steps: trigger first, then by service
+    }    
     steps = workflow.get("workflow", [])
-    steps_sorted = sorted(
-        steps,
-        key=lambda s: (0 if s.get("type") == "trigger" else 1, s.get("service", ""))
-    )
+    log_to_redis(workflow_id, str(steps))
+    edges = workflow.get("edges", [])  # Get all edges
 
-    for idx, step in enumerate(steps_sorted):
-        step_id = step.get("id", f"step-{idx}")
+    # Build graph representation
+    graph = {step["id"]: [] for step in steps}
+    for edge in edges:
+        source = edge["source"]
+        target = edge["target"]
+        graph[source].append(target)
+
+    # Perform topological sorting
+    def topological_sort(graph):
+        visited = set()
+        stack = []
+        result = []
+
+        def dfs(node):
+            if node in visited:
+                return
+            visited.add(node)
+            for neighbor in graph.get(node, []):
+                dfs(neighbor)
+            stack.append(node)
+
+        for node in graph:
+            dfs(node)
+
+        while stack:
+            result.append(stack.pop())
+        return result
+
+    execution_order = topological_sort(graph)
+    log_to_redis(workflow_id, f"Execution order: {execution_order}")
+
+    # Execute steps in order
+    for step_id in execution_order:
+        step = next((s for s in steps if s["id"] == step_id), None)
+        log_to_redis(workflow_id, f"step {step.get('service')}")
+        if not step:
+            continue
         handler = STEP_REGISTRY.get((step.get("type"), step.get("service")))
         if handler:
             try:
                 result = handler(step, context, tokens)  # Pass context to each step
                 if result:
-                    context[f"{step.get('service')}_result"] = result  # Store step output in context
+                    context[f"{step.get('id')}_result"] = result  # Store step output in context
                 log_to_redis(workflow_id, f"Step {step_id} completed.")
                 log_to_redis(workflow_id, str(result))
             except Exception as e:
@@ -140,10 +171,10 @@ def run_workflow(workflow: dict, request: Request, db: Session = Depends(get_db)
                 return {"error": f"Step {step_id} failed: {str(e)}"}
 
     log_to_redis(workflow_id, "Workflow executed.")
-    log_to_redis(workflow_id, "------------------------------------------------------")
     return {
         "message": "Workflow executed.",
         "workflow_id": workflow_id,
+        "execution_order": execution_order,  # Return the execution order
         "context": context,  # Return the final context
     }
 
