@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import Canvas from '../components/Canvas';
 import {
   Paper, Box, Typography, Stack, Button, Divider, List, ListItem, IconButton, TextField
@@ -6,18 +6,11 @@ import {
 import { useTheme } from '@mui/material/styles'; // <-- ADD THIS
 import DeleteIcon from '@mui/icons-material/Delete';
 import EmailIcon from '@mui/icons-material/Email';
-import BookIcon from '@mui/icons-material/Book';
-import PlayCircleIcon from '@mui/icons-material/PlayCircle';
 import FolderOpenIcon from '@mui/icons-material/FolderOpen';
 import Brightness4Icon from '@mui/icons-material/Brightness4';
 import Brightness7Icon from '@mui/icons-material/Brightness7';
 import { ReactFlowProvider } from 'react-flow-renderer';
-import TableChartIcon from '@mui/icons-material/TableChart'; // Google Sheets
-import ChatIcon from '@mui/icons-material/Chat'; // Slack
-import FacebookIcon from '@mui/icons-material/Facebook'; // Facebook
-import AttachMoneyIcon from '@mui/icons-material/AttachMoney'; // Yahoo Finance
-import SmartToyIcon from '@mui/icons-material/SmartToy'; // OpenAI
-import PhoneIphoneIcon from '@mui/icons-material/PhoneIphone'; // Twilio
+import toolRegistry from '../components/ToolRegistry';
 
 const WorkflowBuilder = ({ username, mode, setMode }: { username: string, mode: 'light' | 'dark', setMode: (m: 'light' | 'dark') => void }) => {
   const theme = useTheme(); // <-- ADD THIS
@@ -145,126 +138,35 @@ useEffect(() => {
           p: 3,
           minHeight: '100vh',
           borderRadius: 3,
-          bgcolor: theme.palette.background.paper, // <-- USE THEME
+          bgcolor: theme.palette.background.paper,
           display: 'flex',
-          flexDirection: 'column'
+          flexDirection: 'column',
         }}
       >
         <Stack spacing={4} sx={{ flex: 1 }}>
           <Box>
             <Typography variant="h6" fontWeight={700} gutterBottom>
-              <EmailIcon fontSize="small" sx={{ mr: 1, color: 'primary.main' }} />
               Tools
             </Typography>
             <Stack spacing={2}>
-              <Button
-                startIcon={<EmailIcon />}
-                variant="contained"
-                color="primary"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'gmail');
-                }}
-              >
-                Gmail
-              </Button>
-              <Button
-                startIcon={<BookIcon />}
-                variant="contained"
-                color="secondary"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'notion');
-                }}
-              >
-                Notion
-              </Button>
-              <Button
-                startIcon={<PlayCircleIcon />}
-                variant="contained"
-                color="info"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'youtube');
-                }}
-              >
-                YouTube
-              </Button>
-              <Button
-                startIcon={<TableChartIcon />}
-                variant="contained"
-                color="success"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'googlesheets');
-                }}
-              >
-                Google Sheets
-              </Button>
-              <Button
-                startIcon={<ChatIcon />}
-                variant="contained"
-                color="info"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'slack');
-                }}
-              >
-                Slack
-              </Button>
-              <Button
-                startIcon={<FacebookIcon />}
-                variant="contained"
-                color="primary"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'facebook');
-                }}
-              >
-                Facebook
-              </Button>
-              <Button
-                startIcon={<AttachMoneyIcon />}
-                variant="contained"
-                color="warning"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'yahoofinance');
-                }}
-              >
-                Yahoo Finance
-              </Button>
-              <Button
-                startIcon={<SmartToyIcon />}
-                variant="contained"
-                color="secondary"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'openai');
-                }}
-              >
-                OpenAI
-              </Button>
-              <Button
-                startIcon={<PhoneIphoneIcon />}
-                variant="contained"
-                color="secondary"
-                fullWidth
-                draggable
-                onDragStart={e => {
-                  e.dataTransfer.setData('type', 'twilio');
-                }}
-              >
-                Twilio
-              </Button>
+              {Object.keys(toolRegistry).map((toolKey) => {
+                const tool = toolRegistry[toolKey];
+                return (
+                  <Button
+                    key={toolKey}
+                    startIcon={<EmailIcon />} // Replace with tool-specific icons
+                    variant="contained"
+                    color="primary"
+                    fullWidth
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData('type', toolKey);
+                    }}
+                  >
+                    {tool.label}
+                  </Button>
+                );
+              })}
             </Stack>
           </Box>
           <Divider />

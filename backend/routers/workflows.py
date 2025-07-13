@@ -1,5 +1,6 @@
 # backend/routers/workflows.py
 
+from services import tool_registry
 from fastapi import APIRouter, HTTPException, Depends, Request, WebSocket, Body
 from sqlalchemy.orm import Session
 from models.workflow import Workflow
@@ -47,7 +48,18 @@ class ScheduleRequest(BaseModel):
 
 router = APIRouter()
 
+@router.post("/tools/{tool_name}/actions/{action}")
+async def execute_tool_action(tool_name: str, action: str, request: Request):
+    tool = tool_registry.get(tool_name)
+    if not tool:
+        raise HTTPException(status_code=404, detail="Tool not found")
 
+    params = await request.json()
+    try:
+        result = tool.execute_action(action, params)
+        return result
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
 
 # In-memory workflow storage for example
 def get_db():
@@ -237,6 +249,8 @@ def openai_stub():
 def twilio_stub():
     return {"message": "Twilio endpoint stub"}
 
+# OpenAI routes
+
 @router.post("/tools/openai/generate")
 def openai_generate(prompt: str = Body(...), api_key: str = Body(None)):
     client = OpenAI(api_key=OPENAI_API_KEY)
@@ -250,6 +264,9 @@ def openai_generate(prompt: str = Body(...), api_key: str = Body(None)):
         return {"result": response.choices[0].message.content}
     except Exception as e:
         return {"error": str(e)}
+
+
+# Gmail routes 
 
 @router.post("/save_gmail_token")
 def save_gmail_token(data: dict, db: Session = Depends(get_db)):
@@ -273,9 +290,7 @@ def save_gmail_token(data: dict, db: Session = Depends(get_db)):
 
 @router.post("/exchange_gmail_code")
 def exchange_gmail_code(data: dict, db: Session = Depends(get_db)):
-   
- 
-
+  
     logger.info("Received request to exchange Gmail code")
     code = data.get("code")
     username = data.get("username")
