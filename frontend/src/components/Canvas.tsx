@@ -128,6 +128,22 @@ const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
   const [gmailUser, setGmailUser] = useState<string | null>(null);
   const [notionUser, setNotionUser] = useState<string | null>(null);
 
+// Add the handleGmailSignOut function
+const handleGmailSignOut = () => {
+  console.log("Sign Out button clicked"); // Debugging log
+  localStorage.removeItem("gmail_token"); // Remove the Gmail token from localStorage
+  setGmailUser(null); // Update the state to reflect that the user is signed out
+  // Optionally, revoke the token using Google's OAuth2 revoke method
+  if (window.google && window.google.accounts && window.google.accounts.oauth2) {
+    const token = localStorage.getItem("gmail_token");
+    if (token) {
+      window.google.accounts.oauth2.revoke(token, () => {
+        console.log("Gmail token revoked");
+      });
+    }
+  }
+};
+
   useImperativeHandle(ref, () => ({
     getWorkflowJson: (name: string) => ({
       name,
@@ -336,6 +352,15 @@ const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
   // Render node panels as a vertical list on the right
   return (
     <Box sx={{ position: "relative", height: "100%" }}>
+      {/* Gmail Auth Panel */}
+      {selectedNode?.data.type === "trigger" && selectedNode?.data.label === "gmail" && (
+        <GmailAuthPanel
+          gmailUser={gmailUser}
+          codeClient={codeClient}
+          onSignOut={handleGmailSignOut}
+        />
+      )}
+
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -705,20 +730,7 @@ const Canvas = forwardRef<any, CanvasProps>((props, ref) => {
 
 export default Canvas;
 
-// Add the handleGmailSignOut function
-const handleGmailSignOut = () => {
-  localStorage.removeItem("gmail_token"); // Remove the Gmail token from localStorage
-  // setGmailUser(null); // Update the state to reflect that the user is signed out
-  // Optionally, revoke the token using Google's OAuth2 revoke method
-  if (window.google && window.google.accounts && window.google.accounts.oauth2) {
-    const token = localStorage.getItem("gmail_token");
-    if (token) {
-      window.google.accounts.oauth2.revoke(token, () => {
-        console.log("Gmail token revoked");
-      });
-    }
-  }
-};
+
 
 const edgeOptions = {
   style: { stroke: '#000', strokeWidth: 2 }, // Customize edge appearance

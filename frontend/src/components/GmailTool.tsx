@@ -1,5 +1,6 @@
 import { Box, Stack, Typography, Button } from "@mui/material";
 import { Tool } from "./ToolInterface";
+
 const GmailTool: Tool = {
   label: 'Gmail',
   type: 'trigger',
@@ -39,8 +40,20 @@ const GmailTool: Tool = {
               client_id: "YOUR_CLIENT_ID",
               scope: "https://www.googleapis.com/auth/gmail.readonly",
               ux_mode: "popup",
-              callback: (response: any) => {
-                console.log("Gmail authenticated:", response);
+              callback: async (response: any) => {
+                const res = await fetch("http://localhost:8000/exchange_gmail_code", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ code: response.code, username: sessionStorage.getItem("user") }),
+                });
+
+                const data = await res.json();
+                if (data.gmail_access_token) {
+                  localStorage.setItem("gmail_token", data.gmail_access_token);
+                  alert("✅ Gmail connected successfully!");
+                } else {
+                  alert("❌ Failed to connect Gmail");
+                }
               },
             }).requestCode();
           }}

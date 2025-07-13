@@ -20,7 +20,7 @@ def handle_gmail_trigger(step, context, tokens):
     gmail_token = get_valid_gmail_token(user)
     emails = check_new_email(gmail_token)
     if emails:
-        context["trigger_data"] = emails  # Store the first email in context
+        context["trigger_data"] = emails
     return emails
 
 @register_step("action", "notion")
